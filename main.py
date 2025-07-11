@@ -1,69 +1,181 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox, Text
-from PIL import Image, ImageTk
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel
-import torch
-import numpy as np
+import chainlit as cl
+import speech_recognition as sr
+import pandas as pd
+import os
+import asyncio
+import httpx
+from dotenv import load_dotenv
 import os
 
-class OCRApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("OCR - Tu casa en África")
-        self.root.geometry("700x500")
-        self.root.configure(bg="#f5f5f5")
+ARCHIVO_EXCEL = "formulario.xlsx"
+CAMPOS = ["Pueblo", "Nombre Persona", "Motivo Consulta", "Diagnóstico", "Tratamiento"]
+formulario = {campo: "" for campo in CAMPOS}
 
-        # Logo
-        logo_path = r"C:\Users\X415\Desktop\Tu casa en Africa\logo.jpg"
-        if os.path.exists(logo_path):
-            try:
-                logo_img = Image.open(logo_path).resize((150, 150), Image.Resampling.LANCZOS)
-                self.logo = ImageTk.PhotoImage(logo_img)
-                tk.Label(root, image=self.logo, bg="#f5f5f5").pack(pady=10)
-            except Exception as e:
-                print("Error cargando logo:", e)
+grabando = False
+campo_actual = None
+campo_editando = None
 
-        tk.Label(root, text="OCR de Registros Médicos", font=("Arial", 18, "bold"), bg="#f5f5f5").pack(pady=5)
-        tk.Label(root, text="Selecciona una imagen de un registro para extraer texto.",
-                 font=("Arial", 12), bg="#f5f5f5").pack(pady=5)
 
-        tk.Button(root, text="Seleccionar Imagen", command=self.load_image,
-                  bg="#4CAF50", fg="white", font=("Arial", 12), padx=10, pady=5).pack(pady=10)
+load_dotenv()
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 
-        self.result_text = Text(root, height=10, wrap="word", font=("Arial", 11))
-        self.result_text.pack(padx=20, pady=10, fill="both", expand=True)
 
-        # Cargar el modelo y el procesador de Hugging Face
-        self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
-        self.model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-printed")
+def inicializar_excel():
+    if not os.path.exists(ARCHIVO_EXCEL):
+        df = pd.DataFrame([formulario])
+        df.to_excel(ARCHIVO_EXCEL, index=False)
 
-    def load_image(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Imágenes", "*.png *.jpg *.jpeg")])
-        if not file_path:
-            return
+def actualizar_excel():
+    if os.path.exists(ARCHIVO_EXCEL):
+        df_existente = pd.read_excel(ARCHIVO_EXCEL)
+        df_actualizado = pd.concat([df_existente, pd.DataFrame([formulario])], ignore_index=True)
+    else:
+        df_actualizado = pd.DataFrame([formulario])
+    df_actualizado.to_excel(ARCHIVO_EXCEL, index=False)
 
+async def pulir_texto_con_ia(texto: str) -> str:
+    url = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+    payload = {"inputs": f"summarize: {texto}"}
+
+    async with httpx.AsyncClient(timeout=30) as client:
         try:
-            # Cargar la imagen usando PIL
-            image = Image.open(file_path)
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            print(f"Error HTTP: {e.response.status_code}")
+            return texto
 
-            # Preprocesar la imagen y convertirla a un tensor
-            pixel_values = self.processor(images=image, return_tensors="pt").pixel_values
+        salida = response.json()
 
-            # Realizar la inferencia (OCR)
-            generated_ids = self.model.generate(pixel_values)
+    if isinstance(salida, list) and "generated_text" in salida[0]:
+        return salida[0]["generated_text"]
+    else:
+        return texto
 
-            # Decodificar los resultados generados (el texto extraído)
-            text = self.processor.decode(generated_ids[0], skip_special_tokens=True)
+def reconocer_voz_continuo():
+    global grabando
+    r = sr.Recognizer()
+    texto_completo = ""
+    with sr.Microphone() as source:
+        print("🎙️ Ajustando para ruido ambiental...")
+        r.adjust_for_ambient_noise(source, duration=1.5)
+        r.energy_threshold = 300
+        print("🎙️ Empieza a hablar...")
 
-            # Mostrar el texto extraído en la interfaz gráfica
-            self.result_text.delete(1.0, tk.END)
-            self.result_text.insert(tk.END, text)
+        while grabando:
+            try:
+                audio = r.listen(source, timeout=5, phrase_time_limit=10)
+                texto = r.recognize_google(audio, language="es-ES")
+                print(f"Escuchado: {texto}")
+                if "parar" in texto.lower():
+                    print("Detectado 'parar', terminando grabación.")
+                    break
+                texto_completo += texto + " "
+            except sr.WaitTimeoutError:
+                print("⏰ No se detectó voz, sigo esperando...")
+            except sr.UnknownValueError:
+                print("No entendí, continúa hablando...")
+            except sr.RequestError as e:
+                print(f"Error de servicio: {e}")
+                break
 
-        except Exception as e:
-            messagebox.showerror("Error", f"No se pudo procesar la imagen:\n{e}")
+    return texto_completo.strip()
 
+@cl.on_chat_start
+async def start():
+    inicializar_excel()
+    await cl.Message(content="🩺 Formulario de Consulta Médica por Voz").send()
+    await mostrar_botones()
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = OCRApp(root)
-    root.mainloop()
+async def mostrar_botones():
+    actions = [
+        cl.Action(name="empezar_grabacion", label=campo, payload={"campo": campo})
+        for campo in CAMPOS
+    ]
+    actions.append(cl.Action(name="detener_grabacion", label="Detener Grabación", payload={}))
+    await cl.Message(content="Haz clic en un botón para empezar a hablar o para detener la grabación:", actions=actions).send()
+
+@cl.action_callback("empezar_grabacion")
+async def manejar_empezar_grabacion(action: cl.Action):
+    global grabando, campo_actual, campo_editando
+    campo_actual = action.payload["campo"]
+    campo_editando = None
+
+    if grabando:
+        await cl.Message(content="⚠️ Ya estás grabando, detén la grabación antes de empezar otra.").send()
+        return
+
+    grabando = True
+    await cl.Message(content=f"🎤 Empezando grabación para **{campo_actual}**. Habla cuando quieras...").send()
+
+    texto_bruto = await asyncio.to_thread(reconocer_voz_continuo)
+
+    grabando = False
+
+    texto_pulido = await pulir_texto_con_ia(texto_bruto)
+
+    formulario[campo_actual] = texto_pulido
+    actualizar_excel()
+
+    actions = [
+        cl.Action(name="editar_texto", label="Editar texto", payload={"campo": campo_actual}),
+        cl.Action(name="regrabar_texto", label="Regrabar voz", payload={"campo": campo_actual}),
+        cl.Action(name="mostrar_botones", label="Volver a opciones", payload={})
+    ]
+    await cl.Message(content=f"✅ **{campo_actual}** actualizado:\n\n{texto_pulido}", actions=actions).send()
+
+@cl.action_callback("regrabar_texto")
+async def manejar_regrabar_texto(action: cl.Action):
+    global grabando, campo_actual, campo_editando
+    campo_actual = action.payload["campo"]
+    campo_editando = None
+
+    if grabando:
+        await cl.Message(content="⚠️ Ya estás grabando, detén la grabación antes de empezar otra.").send()
+        return
+
+    grabando = True
+    await cl.Message(content=f"🎤 Regrabando para **{campo_actual}**. Habla cuando quieras...").send()
+
+    texto_bruto = await asyncio.to_thread(reconocer_voz_continuo)
+
+    grabando = False
+
+    texto_pulido = await pulir_texto_con_ia(texto_bruto)
+
+    formulario[campo_actual] = texto_pulido
+    actualizar_excel()
+
+    actions = [
+        cl.Action(name="editar_texto", label="Editar texto", payload={"campo": campo_actual}),
+        cl.Action(name="regrabar_texto", label="Regrabar voz", payload={"campo": campo_actual}),
+        cl.Action(name="mostrar_botones", label="Volver a opciones", payload={})
+    ]
+    await cl.Message(content=f"✅ **{campo_actual}** actualizado con la regrabación:\n\n{texto_pulido}", actions=actions).send()
+
+@cl.action_callback("detener_grabacion")
+async def manejar_detener_grabacion(action: cl.Action):
+    global grabando
+    if grabando:
+        grabando = False
+
+@cl.action_callback("editar_texto")
+async def manejar_editar_texto(action: cl.Action):
+    global campo_editando
+    campo_editando = action.payload["campo"]
+    texto_actual = formulario[campo_editando]
+    await cl.Message(content=f"✍️ Escribe el nuevo texto para **{campo_editando}** (envía el mensaje). Texto actual:\n\n{texto_actual}").send()
+
+@cl.on_message
+async def recibir_texto_editado(message: cl.Message):
+    global campo_editando
+    if campo_editando is None:
+        return
+
+    texto_nuevo = message.content.strip()
+    formulario[campo_editando] = texto_nuevo
+    actualizar_excel()
+    await cl.Message(content=f"✅ Texto para **{campo_editando}** actualizado correctamente:\n\n{texto_nuevo}").send()
+    campo_editando = None
+    await mostrar_botones()
