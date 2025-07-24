@@ -178,4 +178,3 @@ typing_extensions==4.13.2
 uptrace==1.31.0
 uritemplate==4.1.1
 gunicorn==21.2.0
-uvicorn==0.22.0
