@@ -2,51 +2,213 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Grabador de voz</title>
+  <title>Formulario con grabación por campo (Solo local)</title>
+  <style>
+    button.field-btn {
+      margin: 5px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .active {
+      background-color: #4caf50;
+      color: white;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .field-output {
+      margin-bottom: 10px;
+      min-height: 20px;
+      padding: 6px;
+      border: 1px solid #ccc;
+      width: 300px;
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
 <body>
-  <h1>🎤 Grabar voz y enviar al backend</h1>
-  <button id="startBtn">Grabar</button>
-  <button id="stopBtn" disabled>Detener</button>
+  <h1>🎤 Transcripción por campo (Solo local)</h1>
+
+  <div>
+    <button class="field-btn" data-field="nombre">Nombre y Apellidos</button>
+    <button class="field-btn" data-field="edad">Edad</button>
+    <button class="field-btn" data-field="pueblo">Pueblo</button>
+    <button class="field-btn" data-field="motivo">Motivo de consulta</button>
+    <button class="field-btn" data-field="diagnostico">Diagnóstico</button>
+    <button class="field-btn" data-field="tratamiento">Tratamiento</button>
+    <button class="field-btn" data-field="seguimiento">Precisa seguimiento? (sí o no)</button>
+  </div>
+
+  <div style="margin-top:20px;">
+    <button id="startBtn" disabled>🎙️ Empezar</button>
+    <button id="stopBtn" disabled>🛑 Detener</button>
+  </div>
+
+  <p><strong>Campo seleccionado:</strong> <span id="campoSeleccionado">Ninguno</span></p>
+  <p><strong>Transcripción en vivo:</strong></p>
+  <p id="transcripcion" style="min-height: 30px; border: 1px solid #ccc; padding: 6px; width: 400px;"></p>
+
+  <h2>Campos guardados</h2>
+  <div>
+    <label>Nombre y Apellidos:</label>
+    <div id="nombre" class="field-output"></div>
+
+    <label>Edad:</label>
+    <div id="edad" class="field-output"></div>
+
+    <label>Pueblo:</label>
+    <div id="pueblo" class="field-output"></div>
+
+    <label>Motivo de consulta:</label>
+    <div id="motivo" class="field-output"></div>
+
+    <label>Diagnóstico:</label>
+    <div id="diagnostico" class="field-output"></div>
+
+    <label>Tratamiento:</label>
+    <div id="tratamiento" class="field-output"></div>
+
+    <label>Precisa seguimiento? (sí o no):</label>
+    <div id="seguimiento" class="field-output"></div>
+  </div>
 
   <script>
+    let recognition;
     let mediaRecorder;
     let audioChunks = [];
+    let isRecording = false;
+    let textoCompleto = "";
 
-    document.getElementById("startBtn").onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const transcripcionP = document.getElementById('transcripcion');
+    const campoSeleccionadoSpan = document.getElementById('campoSeleccionado');
+    let campoSeleccionado = null;
 
-      mediaRecorder.start();
-      audioChunks = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        audioChunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(audioChunks, { type: 'audio/wav' });
-        const formData = new FormData();
-        formData.append("file", blob, "grabacion.wav");
-
-        const response = await fetch("https://tu-casa-en-africa-3.onrender.com/voz", {
-          method: "POST",
-          body: formData
-        });
-
-        const data = await response.json();
-        alert("Texto reconocido: " + data.transcripcion);
-      };
-
-      document.getElementById("startBtn").disabled = true;
-      document.getElementById("stopBtn").disabled = false;
+    const camposGuardados = {
+      nombre: "",
+      edad: "",
+      pueblo: "",
+      motivo: "",
+      diagnostico: "",
+      tratamiento: "",
+      seguimiento: ""
     };
 
-    document.getElementById("stopBtn").onclick = () => {
+    const botonesCampo = document.querySelectorAll('.field-btn');
+    botonesCampo.forEach(btn => {
+      btn.onclick = () => {
+        if(isRecording){
+          alert("Primero detén la grabación actual");
+          return;
+        }
+        botonesCampo.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        campoSeleccionado = btn.getAttribute('data-field');
+        campoSeleccionadoSpan.innerText = btn.innerText;
+        transcripcionP.innerText = "";
+        textoCompleto = "";
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      };
+    });
+
+    startBtn.onclick = () => {
+      if(!campoSeleccionado){
+        alert("Selecciona primero un campo");
+        return;
+      }
+
+      window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = "es-ES";
+      recognition.interimResults = true;
+      recognition.continuous = true;
+
+      textoCompleto = "";
+
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            textoCompleto += transcript + " ";
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        transcripcionP.innerText = textoCompleto + interimTranscript;
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Error en reconocimiento:', event.error);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          alert('Permiso de micrófono denegado o error del servicio');
+          stopGrabacion();
+        }
+      };
+
+      recognition.onend = () => {
+        if (isRecording) {
+          recognition.start();
+        } else {
+          // Grabación parada, guardar texto
+          if(campoSeleccionado){
+            camposGuardados[campoSeleccionado] = textoCompleto.trim();
+            document.getElementById(campoSeleccionado).innerText = camposGuardados[campoSeleccionado];
+          }
+          transcripcionP.innerText = "";
+          textoCompleto = "";
+        }
+      };
+
+      recognition.start();
+      isRecording = true;
+
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.start();
+      }).catch(error => {
+        alert('No se pudo acceder al micrófono: ' + error);
+        stopGrabacion();
+      });
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
+
+    stopBtn.onclick = () => {
+      if(!isRecording) return;
+
+      isRecording = false;
+      recognition.stop();
       mediaRecorder.stop();
-      document.getElementById("startBtn").disabled = false;
-      document.getElementById("stopBtn").disabled = true;
+
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+
+      botonesCampo.forEach(b => b.classList.remove('active'));
+      campoSeleccionadoSpan.innerText = "Ninguno";
     };
+
+    function stopGrabacion() {
+      if (!isRecording) return;
+      isRecording = false;
+      recognition.stop();
+      mediaRecorder.stop();
+
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+
+      botonesCampo.forEach(b => b.classList.remove('active'));
+      campoSeleccionadoSpan.innerText = "Ninguno";
+    }
   </script>
 </body>
 </html>
+
+
