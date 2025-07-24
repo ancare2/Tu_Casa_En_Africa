@@ -3,3 +3,4 @@ speechrecognition
 pandas
 httpx
 python-dotenv
+openpyxl
