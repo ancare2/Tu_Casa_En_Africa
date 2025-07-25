@@ -263,7 +263,6 @@
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://apis.google.com/js/api.js"></script>
 <script>
   // Variables globales
   let recognition, isRecording = false;
@@ -301,58 +300,30 @@
   const guardarEdicionBtn = document.getElementById('guardarEdicion');
   const editFieldLabel = document.getElementById('editFieldLabel');
 
-  // --- Google Sheets API Setup ---
+  // URL de tu webhook de Google Apps Script
+  const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwT9UGzaJTwtsuVTbWYRIHCJ0MNdSs3pPcR3qAojUD8YptXXhkC00foWo25rh6hB-LlZw/exec';
 
-  // Valores reemplazados con tus credenciales:
-  const CLIENT_ID = '484170483680-uucf7ocv7v1jlj2rcm1005r9i0mjrejm.apps.googleusercontent.com';
-  const API_KEY = 'AIzaSyBXf1gRvVR5uJxGiOeOo3BBNZ4H1M7GWLk';
-
-  // Debes poner aquí el ID de tu hoja de cálculo
-  const SPREADSHEET_ID = '1OjuTNFwJqE1Dd-bENjPmLx46cwLqSE9szF-4Psybc6I';
-
-  // Alcances para acceso a Google Sheets
-  const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
-
-  function handleClientLoad() {
-    gapi.load('client:auth2', initClient);
-  }
-
-  function initClient() {
-    gapi.client.init({
-      apiKey: API_KEY,
-      clientId: CLIENT_ID,
-      discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-      scope: SCOPES
-    }).then(() => {
-      console.log("Google API initialized");
-    }, (error) => {
-      console.error("Error inicializando Google API:", error);
-    });
-  }
-
-  // Función para agregar fila a Google Sheets
-  async function agregarFilaGoogleSheets(filaDatos) {
+  // Función para enviar datos vía POST a tu Apps Script
+  async function guardarRegistroEnSheet(filaDatos) {
     try {
-      // Asegurarse de que el usuario está autenticado
-      if (!gapi.auth2.getAuthInstance().isSignedIn.get()) {
-        await gapi.auth2.getAuthInstance().signIn();
-      }
-
-      const valores = [campos.map(c => filaDatos[c] || "")];
-
-      const request = gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
-        range: "A:G",
-        valueInputOption: "RAW",
-        insertDataOption: "INSERT_ROWS",
-        resource: {
-          values: valores
-        }
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(filaDatos)
       });
 
-      const response = await request;
-      console.log('Fila agregada a Google Sheets:', response);
-      alert('Registro guardado en Google Sheets');
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+
+      const textoRespuesta = await response.text();
+      if (textoRespuesta === 'OK') {
+        alert('Registro guardado en Google Sheets correctamente');
+      } else {
+        alert('Respuesta inesperada del servidor: ' + textoRespuesta);
+      }
     } catch (error) {
       console.error('Error guardando en Google Sheets:', error);
       alert('Error al guardar en Google Sheets. Revisa la consola.');
@@ -545,15 +516,15 @@
       return;
     }
 
-    // Recopilar datos de la fila para enviar a Google Sheets
+    // Recopilar datos de la fila para enviar al webhook
     const filaDatos = {};
     campos.forEach(campo => {
       const celda = filaActual.querySelector(`[data-field="${campo}"]`);
       filaDatos[campo] = celda ? celda.textContent.trim() : "";
     });
 
-    // Llamar función para guardar en Google Sheets
-    await agregarFilaGoogleSheets(filaDatos);
+    // Guardar en Google Sheets vía webhook (Apps Script)
+    await guardarRegistroEnSheet(filaDatos);
 
     filaActual = null;
     campoSeleccionado = null;
@@ -564,38 +535,61 @@
 
   if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
     const wb = XLSX.utils.book_new();
-    let data = [];
-    const header = campos.map(c => {
-      switch(c) {
-        case 'nombre': return 'Nombre y Apellidos';
-        case 'edad': return 'Edad';
-        case 'pueblo': return 'Pueblo';
-        case 'motivo': return 'Motivo';
-        case 'diagnostico': return 'Diagnóstico';
-        case 'tratamiento': return 'Tratamiento';
-        case 'seguimiento': return '¿Seguimiento?';
-        default: return c;
-      }
-    });
-    data.push(header);
+    const ws_data = [];
+    const header = campos.map(c => c.charAt(0).toUpperCase() + c.slice(1));
+    ws_data.push(header);
 
-    Array.from(tablaBody.children).forEach(tr => {
+    document.querySelectorAll('#tablaBody tr').forEach(tr => {
       const fila = [];
       campos.forEach(campo => {
-        const celda = tr.querySelector(`[data-field="${campo}"]`);
-        fila.push(celda ? celda.textContent : '');
+        const td = tr.querySelector(`[data-field="${campo}"]`);
+        fila.push(td ? td.textContent : "");
       });
-      data.push(fila);
+      ws_data.push(fila);
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, "Registros");
-    XLSX.writeFile(wb, "Registros.xlsx");
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Registros');
+    XLSX.writeFile(wb, 'registros.xlsx');
   });
 
-  eliminarTodosBtn.addEventListener('click', () => {
-    if (confirm('¿Estás seguro de eliminar todos los registros?')) {
-      tablaBody.innerHTML = "";
+  // Modal y edición inline (simplificada)
+  function abrirModalEdicion(campo, texto) {
+    if (!campo) {
+      alert('Selecciona un campo para editar.');
+      return;
+    }
+    modalBackdrop.style.display = 'block';
+    editModal.style.display = 'block';
+    editFieldLabel.textContent = campo.charAt(0).toUpperCase() + campo.slice(1);
+    editTextarea.value = texto;
+  }
+
+  editFieldBtn.addEventListener('click', () => {
+    const nuevoTexto = editTextarea.value.trim();
+    if (!nuevoTexto) {
+      alert('El texto no puede estar vacío.');
+      return;
+    }
+    if (filaActual && campoSeleccionado) {
+      const celda = filaActual.querySelector(`[data-field="${campoSeleccionado}"]`);
+      if (celda) celda.textContent = nuevoTexto;
+    }
+    modalBackdrop.style.display = 'none';
+    editModal.style.display = 'none';
+    textoCompleto = "";
+    if (transcripcionDiv) transcripcionDiv.textContent = "";
+  });
+
+  cancelModalBtn.addEventListener('click', () => {
+    modalBackdrop.style.display = 'none';
+    editModal.style.display = 'none';
+  });
+
+  // Eliminar todos registros de la tabla
+  if (eliminarTodosBtn) eliminarTodosBtn.addEventListener('click', () => {
+    if (confirm('¿Quieres eliminar todos los registros?')) {
+      tablaBody.innerHTML = '';
       filaActual = null;
       campoSeleccionado = null;
       if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
@@ -603,135 +597,78 @@
     }
   });
 
-  toggleEdicionBtn.addEventListener('click', () => {
+  // Toggle modo edición
+  if (toggleEdicionBtn) toggleEdicionBtn.addEventListener('click', () => {
     modoEdicion = !modoEdicion;
-    toggleEdicionBtn.textContent = modoEdicion ? '❌ Cancelar edición' : '✏️ Editar registros';
-    if (modoEdicion) {
-      activarBorradoBtn.style.display = 'none';
-      buscarRegistroBtn.style.display = 'inline-block';
-      inputBusqueda.style.display = 'none';
-      cerrarBusquedaBtn.style.display = 'none';
-      tablaBody.querySelectorAll('tr').forEach(tr => {
-        tr.querySelectorAll('td.editable').forEach(td => {
-          td.setAttribute('contenteditable', 'true');
-          td.style.backgroundColor = '#ffffdd';
-        });
-      });
-    } else {
-      tablaBody.querySelectorAll('tr').forEach(tr => {
-        tr.querySelectorAll('td.editable').forEach(td => {
-          td.removeAttribute('contenteditable');
-          td.style.backgroundColor = '';
-        });
-      });
-      activarBorradoBtn.style.display = 'inline-block'
-    }
-  });
-
-  activarBorradoBtn.addEventListener('click', () => {
-    modoBorrado = !modoBorrado;
-    activarBorradoBtn.textContent = modoBorrado ? '❌ Cancelar borrar' : '🗑️ Borrar registros';
-    if (modoBorrado) {
-      toggleEdicionBtn.style.display = 'none';
-      buscarRegistroBtn.style.display = 'none';
-      inputBusqueda.style.display = 'none';
-      cerrarBusquedaBtn.style.display = 'none';
-
-      tablaBody.querySelectorAll('tr').forEach(tr => {
-        tr.style.cursor = 'pointer';
-        tr.classList.add('highlight-borrable');
-        tr.onclick = () => {
-          if (confirm('¿Seguro quieres borrar este registro?')) {
-            tr.remove();
-          }
-        };
-      });
-    } else {
-      tablaBody.querySelectorAll('tr').forEach(tr => {
-        tr.style.cursor = 'default';
-        tr.classList.remove('highlight-borrable');
-        tr.onclick = null;
-      });
-      toggleEdicionBtn.style.display = 'inline-block';
-    }
-  });
-
-  buscarRegistroBtn.addEventListener('click', () => {
-    inputBusqueda.style.display = 'inline-block';
-    cerrarBusquedaBtn.style.display = 'inline-block';
-    inputBusqueda.focus();
-  });
-
-  cerrarBusquedaBtn.addEventListener('click', () => {
-    inputBusqueda.style.display = 'none';
-    cerrarBusquedaBtn.style.display = 'none';
-    inputBusqueda.value = '';
-    mostrarTodasFilas();
-  });
-
-  inputBusqueda.addEventListener('input', () => {
-    const textoBusqueda = inputBusqueda.value.toLowerCase().trim();
-    if (!textoBusqueda) {
-      mostrarTodasFilas();
-      return;
-    }
-    const filas = tablaBody.querySelectorAll('tr');
-    filas.forEach(tr => {
-      const nombre = tr.querySelector('[data-field="nombre"]').textContent.toLowerCase();
-      if (nombre.includes(textoBusqueda)) {
-        tr.style.display = '';
+    toggleEdicionBtn.textContent = modoEdicion ? 'Desactivar Edición' : 'Activar Edición';
+    document.querySelectorAll('#tablaBody td.editable').forEach(td => {
+      td.contentEditable = modoEdicion;
+      if (modoEdicion) {
+        td.style.backgroundColor = '#fff8dc';
       } else {
-        tr.style.display = 'none';
+        td.style.backgroundColor = '';
       }
     });
   });
 
-  function mostrarTodasFilas() {
-    const filas = tablaBody.querySelectorAll('tr');
-    filas.forEach(tr => tr.style.display = '');
-  }
-
-  // Edición manual vía modal
-  function abrirModalEdicion(campo, texto) {
-    if (!campo) {
-      alert('Selecciona un campo primero');
-      return;
+  // Modo borrado filas
+  if (activarBorradoBtn) activarBorradoBtn.addEventListener('click', () => {
+    modoBorrado = !modoBorrado;
+    activarBorradoBtn.textContent = modoBorrado ? 'Desactivar Borrado' : 'Activar Borrado';
+    if (modoBorrado) {
+      document.querySelectorAll('#tablaBody tr.borrable').forEach(tr => {
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', borrarFila);
+      });
+    } else {
+      document.querySelectorAll('#tablaBody tr.borrable').forEach(tr => {
+        tr.style.cursor = '';
+        tr.removeEventListener('click', borrarFila);
+      });
     }
-    modalBackdrop.style.display = 'block';
-    editModal.style.display = 'block';
-    editFieldLabel.textContent = `Editar ${campo.charAt(0).toUpperCase() + campo.slice(1)}`;
-    editTextarea.value = texto;
-  }
-
-  cancelModalBtn.addEventListener('click', () => {
-    cerrarModalEdicion();
   });
 
-  guardarEdicionBtn.addEventListener('click', () => {
-    const textoEditado = editTextarea.value.trim();
-    if (!textoEditado) {
-      alert('No puede estar vacío');
-      return;
+  function borrarFila(event) {
+    if (!modoBorrado) return;
+    if (confirm('¿Eliminar este registro?')) {
+      const tr = event.currentTarget;
+      tr.remove();
+      if (filaActual === tr) {
+        filaActual = null;
+        campoSeleccionado = null;
+        if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
+        actualizarEstadoBotones();
+      }
     }
-    if (!filaActual || !campoSeleccionado) {
-      alert('No hay fila ni campo seleccionado');
-      cerrarModalEdicion();
-      return;
-    }
-    agregarOActualizarRegistro(campoSeleccionado, textoEditado);
-    cerrarModalEdicion();
-  });
-
-  function cerrarModalEdicion() {
-    modalBackdrop.style.display = 'none';
-    editModal.style.display = 'none';
   }
 
-  // Inicializar Google API al cargar página
-  window.onload = () => {
-    handleClientLoad();
-    actualizarEstadoBotones();
-  };
+  // Búsqueda sencilla (busca en 'nombre')
+  if (buscarRegistroBtn) buscarRegistroBtn.addEventListener('click', () => {
+    const busqueda = inputBusqueda.value.trim().toLowerCase();
+    if (!busqueda) return;
+    const filas = Array.from(tablaBody.querySelectorAll('tr'));
+    let encontrados = 0;
+    filas.forEach(tr => {
+      const nombreTd = tr.querySelector('[data-field="nombre"]');
+      if (nombreTd && nombreTd.textContent.toLowerCase().includes(busqueda)) {
+        tr.style.backgroundColor = '#ffff99';
+        encontrados++;
+      } else {
+        tr.style.backgroundColor = '';
+      }
+    });
+    if (encontrados === 0) {
+      alert('No se encontraron registros con ese nombre.');
+    }
+  });
 
+  if (cerrarBusquedaBtn) cerrarBusquedaBtn.addEventListener('click', () => {
+    inputBusqueda.value = '';
+    document.querySelectorAll('#tablaBody tr').forEach(tr => {
+      tr.style.backgroundColor = '';
+    });
+  });
+
+  actualizarEstadoBotones();
 </script>
 
