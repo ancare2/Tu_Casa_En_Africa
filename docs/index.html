@@ -262,9 +262,13 @@
 
 
 
+/** CAMBIOS:
+ * - Reemplazamos guardarRegistroEnSheet por guardarRegistroEnForm
+ * - Usamos Google Forms en vez de Google Sheets
+ */
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-  // Variables globales
   let recognition, isRecording = false;
   let textoCompleto = "";
   let campoSeleccionado = null;
@@ -274,63 +278,35 @@
 
   const campos = ['nombre', 'edad', 'pueblo', 'motivo', 'diagnostico', 'tratamiento', 'seguimiento'];
 
-  // Referencias DOM
-  const startBtn = document.getElementById('startBtn');
-  const stopBtn = document.getElementById('stopBtn');
-  const guardarRegistroBtn = document.getElementById('guardarRegistro');
-  const descargarExcelBtn = document.getElementById('descargarExcel');
-  const campoSeleccionadoSpan = document.getElementById('campoSeleccionado');
-  const transcripcionDiv = document.getElementById('transcripcion');
-  const checkTranscripcionBtn = document.getElementById('checkTranscripcion');
-  const wrongTranscripcionBtn = document.getElementById('wrongTranscripcion');
-  const tablaBody = document.getElementById('tablaBody');
-  const eliminarTodosBtn = document.getElementById('eliminarTodosBtn');
-  const toggleEdicionBtn = document.getElementById('toggleEdicionBtn');
-  const activarBorradoBtn = document.getElementById('activarBorradoBtn');
-  const buscarRegistroBtn = document.getElementById('buscarRegistroBtn');
-  const inputBusqueda = document.getElementById('inputBusqueda');
-  const cerrarBusquedaBtn = document.getElementById('cerrarBusquedaBtn');
+  const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfglAdf-IhYnrfNNLYpkKz93eF9F9d080m7u8gjCepP2lbkxg/formResponse';
+  const FORM_FIELD_MAPPING = {
+    nombre: 'entry.1664271211',
+    edad: 'entry.282791812',
+    pueblo: 'entry.1076677187',
+    motivo: 'entry.1605895101',
+    diagnostico: 'entry.888349487',
+    tratamiento: 'entry.2112209352',
+    seguimiento: 'entry.1287796843'
+  };
 
-  const modalBackdrop = document.getElementById('modalBackdrop');
-  const editModal = document.getElementById('editModal');
-  const editFieldBtn = document.getElementById('editField');
-  const cancelModalBtn = document.getElementById('cancelModal');
-  const editContainer = document.getElementById('editContainer');
-  const editTextarea = document.getElementById('editTextarea');
-  const guardarEdicionBtn = document.getElementById('guardarEdicion');
-  const editFieldLabel = document.getElementById('editFieldLabel');
-
-  // URL de tu webhook de Google Apps Script
-  const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyKNo0PybP60Opysptk0wiGCSDnAw4G26msmEsF2mi733VfVgNrGZTy0iUayrgFroW0Kw/exec';
-
-  // Función para enviar datos vía POST a tu Apps Script
-  async function guardarRegistroEnSheet(filaDatos) {
+  async function guardarRegistroEnForm(filaDatos) {
+    const formData = new FormData();
+    for (const campo in FORM_FIELD_MAPPING) {
+      formData.append(FORM_FIELD_MAPPING[campo], filaDatos[campo] || '');
+    }
     try {
-      const response = await fetch(WEBHOOK_URL, {
+      await fetch(FORM_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(filaDatos)
+        mode: 'no-cors',
+        body: formData
       });
-
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
-      }
-
-      const textoRespuesta = await response.text();
-      if (textoRespuesta === 'OK') {
-        alert('Registro guardado en Google Sheets correctamente');
-      } else {
-        alert('Respuesta inesperada del servidor: ' + textoRespuesta);
-      }
+      alert('Registro enviado correctamente al formulario');
     } catch (error) {
-      console.error('Error guardando en Google Sheets:', error);
-      alert('Error al guardar en Google Sheets. Revisa la consola.');
+      console.error('Error enviando al formulario:', error);
+      alert('Error al enviar los datos al formulario');
     }
   }
 
-  // Función para convertir texto a número (simplificada)
   function textoANumero(texto) {
     const unidades = {
       'cero':0,'uno':1,'una':1,'dos':2,'tres':3,'cuatro':4,'cinco':5,'seis':6,'siete':7,'ocho':8,'nueve':9
@@ -344,37 +320,21 @@
     const decenas = {
       'treinta':30,'cuarenta':40,'cincuenta':50,'sesenta':60,'setenta':70,'ochenta':80,'noventa':90
     };
-
-    texto = texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    texto = texto.replace(/\s+/g,''); // eliminar espacios
-
+    texto = texto.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g,'');
     if (especiales[texto] !== undefined) return especiales[texto];
     if (unidades[texto] !== undefined) return unidades[texto];
     if (decenas[texto] !== undefined) return decenas[texto];
-
-    // Manejar decenas y unidades unidas por 'y' o 'i'
-    let partes = texto.split('y');
+    let partes = texto.split(/y|i/);
     if (partes.length === 2) {
-      let dec = decenas[partes[0]];
-      let uni = unidades[partes[1]];
+      let dec = decenas[partes[0]], uni = unidades[partes[1]];
       if (dec !== undefined && uni !== undefined) return dec + uni;
     }
-    partes = texto.split('i');
-    if (partes.length === 2) {
-      let dec = decenas[partes[0]];
-      let uni = unidades[partes[1]];
-      if (dec !== undefined && uni !== undefined) return dec + uni;
-    }
-
     return texto;
   }
 
   function convertirSiEsNumero(texto) {
     let n = textoANumero(texto);
-    if (typeof n === 'number' && !isNaN(n)) {
-      return n.toString();
-    }
-    return texto;
+    return (typeof n === 'number' && !isNaN(n)) ? n.toString() : texto;
   }
 
   function actualizarEstadoBotones() {
@@ -423,87 +383,17 @@
     recognition.onerror = (event) => {
       alert("Error en reconocimiento de voz: " + event.error);
       isRecording = false;
-      if (startBtn) startBtn.disabled = false;
-      if (stopBtn) stopBtn.disabled = true;
+      actualizarEstadoBotones();
     };
 
     recognition.onend = () => {
       isRecording = false;
-      if (startBtn) startBtn.disabled = false;
-      if (stopBtn) stopBtn.disabled = true;
+      actualizarEstadoBotones();
     };
-
   } catch (e) {
     alert("No se soporta reconocimiento de voz en este navegador.");
-    if (startBtn) startBtn.disabled = true;
-    if (stopBtn) stopBtn.disabled = true;
+    actualizarEstadoBotones();
   }
-
-  if (startBtn) startBtn.addEventListener('click', () => {
-    if (recognition && !isRecording) {
-      textoCompleto = "";
-      if (transcripcionDiv) transcripcionDiv.textContent = "";
-      recognition.start();
-    }
-  });
-
-  if (stopBtn) stopBtn.addEventListener('click', () => {
-    if (recognition && isRecording) {
-      recognition.stop();
-    }
-  });
-
-  if (checkTranscripcionBtn) checkTranscripcionBtn.addEventListener('click', () => {
-    if (!campoSeleccionado) {
-      alert('Selecciona un campo primero');
-      return;
-    }
-    if (!textoCompleto.trim()) {
-      alert('No hay texto para guardar');
-      return;
-    }
-    let valorFinal = textoCompleto.trim();
-    if (campoSeleccionado === 'edad') {
-      valorFinal = convertirSiEsNumero(valorFinal);
-    }
-    agregarOActualizarRegistro(campoSeleccionado, valorFinal);
-    textoCompleto = "";
-    if (transcripcionDiv) transcripcionDiv.textContent = "";
-  });
-
-  if (wrongTranscripcionBtn) wrongTranscripcionBtn.addEventListener('click', () => {
-    if (!textoCompleto.trim()) {
-      alert('No hay texto para editar');
-      return;
-    }
-    abrirModalEdicion(campoSeleccionado, textoCompleto.trim());
-  });
-
-  function agregarOActualizarRegistro(campo, valor) {
-    if (!filaActual && campo === 'nombre') {
-      filaActual = document.createElement('tr');
-      filaActual.classList.add('borrable');
-      campos.forEach(c => {
-        const td = document.createElement('td');
-        td.textContent = "";
-        td.dataset.field = c;
-        td.classList.add('editable');
-        filaActual.appendChild(td);
-      });
-      tablaBody.appendChild(filaActual);
-    }
-
-    if (!filaActual) {
-      alert('Por favor, introduce primero el Nombre y Apellidos antes que otros campos.');
-      return;
-    }
-
-    const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
-    if (celda) {
-      celda.textContent = valor;
-    }
-  }
-
 
   if (guardarRegistroBtn) guardarRegistroBtn.addEventListener('click', async () => {
     if (!filaActual) {
@@ -515,161 +405,17 @@
       alert('El campo "Nombre y Apellidos" es obligatorio');
       return;
     }
-
-    // Recopilar datos de la fila para enviar al webhook
     const filaDatos = {};
     campos.forEach(campo => {
       const celda = filaActual.querySelector(`[data-field="${campo}"]`);
       filaDatos[campo] = celda ? celda.textContent.trim() : "";
     });
-
-    // Guardar en Google Sheets vía webhook (Apps Script)
-    await guardarRegistroEnSheet(filaDatos);
-
+    await guardarRegistroEnForm(filaDatos);
     filaActual = null;
     campoSeleccionado = null;
-    if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
+    campoSeleccionadoSpan.textContent = 'Ninguno';
     actualizarEstadoBotones();
     document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
   });
-
-  if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
-    const wb = XLSX.utils.book_new();
-    const ws_data = [];
-    const header = campos.map(c => c.charAt(0).toUpperCase() + c.slice(1));
-    ws_data.push(header);
-
-    document.querySelectorAll('#tablaBody tr').forEach(tr => {
-      const fila = [];
-      campos.forEach(campo => {
-        const td = tr.querySelector(`[data-field="${campo}"]`);
-        fila.push(td ? td.textContent : "");
-      });
-      ws_data.push(fila);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    XLSX.utils.book_append_sheet(wb, ws, 'Registros');
-    XLSX.writeFile(wb, 'registros.xlsx');
-  });
-
-  // Modal y edición inline (simplificada)
-  function abrirModalEdicion(campo, texto) {
-    if (!campo) {
-      alert('Selecciona un campo para editar.');
-      return;
-    }
-    modalBackdrop.style.display = 'block';
-    editModal.style.display = 'block';
-    editFieldLabel.textContent = campo.charAt(0).toUpperCase() + campo.slice(1);
-    editTextarea.value = texto;
-  }
-
-  editFieldBtn.addEventListener('click', () => {
-    const nuevoTexto = editTextarea.value.trim();
-    if (!nuevoTexto) {
-      alert('El texto no puede estar vacío.');
-      return;
-    }
-    if (filaActual && campoSeleccionado) {
-      const celda = filaActual.querySelector(`[data-field="${campoSeleccionado}"]`);
-      if (celda) celda.textContent = nuevoTexto;
-    }
-    modalBackdrop.style.display = 'none';
-    editModal.style.display = 'none';
-    textoCompleto = "";
-    if (transcripcionDiv) transcripcionDiv.textContent = "";
-  });
-
-  cancelModalBtn.addEventListener('click', () => {
-    modalBackdrop.style.display = 'none';
-    editModal.style.display = 'none';
-  });
-
-  // Eliminar todos registros de la tabla
-  if (eliminarTodosBtn) eliminarTodosBtn.addEventListener('click', () => {
-    if (confirm('¿Quieres eliminar todos los registros?')) {
-      tablaBody.innerHTML = '';
-      filaActual = null;
-      campoSeleccionado = null;
-      if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
-      actualizarEstadoBotones();
-    }
-  });
-
-  // Toggle modo edición
-  if (toggleEdicionBtn) toggleEdicionBtn.addEventListener('click', () => {
-    modoEdicion = !modoEdicion;
-    toggleEdicionBtn.textContent = modoEdicion ? 'Desactivar Edición' : 'Activar Edición';
-    document.querySelectorAll('#tablaBody td.editable').forEach(td => {
-      td.contentEditable = modoEdicion;
-      if (modoEdicion) {
-        td.style.backgroundColor = '#fff8dc';
-      } else {
-        td.style.backgroundColor = '';
-      }
-    });
-  });
-
-  // Modo borrado filas
-  if (activarBorradoBtn) activarBorradoBtn.addEventListener('click', () => {
-    modoBorrado = !modoBorrado;
-    activarBorradoBtn.textContent = modoBorrado ? 'Desactivar Borrado' : 'Activar Borrado';
-    if (modoBorrado) {
-      document.querySelectorAll('#tablaBody tr.borrable').forEach(tr => {
-        tr.style.cursor = 'pointer';
-        tr.addEventListener('click', borrarFila);
-      });
-    } else {
-      document.querySelectorAll('#tablaBody tr.borrable').forEach(tr => {
-        tr.style.cursor = '';
-        tr.removeEventListener('click', borrarFila);
-      });
-    }
-  });
-
-  function borrarFila(event) {
-    if (!modoBorrado) return;
-    if (confirm('¿Eliminar este registro?')) {
-      const tr = event.currentTarget;
-      tr.remove();
-      if (filaActual === tr) {
-        filaActual = null;
-        campoSeleccionado = null;
-        if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
-        actualizarEstadoBotones();
-      }
-    }
-  }
-
-  // Búsqueda sencilla (busca en 'nombre')
-  if (buscarRegistroBtn) buscarRegistroBtn.addEventListener('click', () => {
-    const busqueda = inputBusqueda.value.trim().toLowerCase();
-    if (!busqueda) return;
-    const filas = Array.from(tablaBody.querySelectorAll('tr'));
-    let encontrados = 0;
-    filas.forEach(tr => {
-      const nombreTd = tr.querySelector('[data-field="nombre"]');
-      if (nombreTd && nombreTd.textContent.toLowerCase().includes(busqueda)) {
-        tr.style.backgroundColor = '#ffff99';
-        encontrados++;
-      } else {
-        tr.style.backgroundColor = '';
-      }
-    });
-    if (encontrados === 0) {
-      alert('No se encontraron registros con ese nombre.');
-    }
-  });
-
-  if (cerrarBusquedaBtn) cerrarBusquedaBtn.addEventListener('click', () => {
-    inputBusqueda.value = '';
-    document.querySelectorAll('#tablaBody tr').forEach(tr => {
-      tr.style.backgroundColor = '';
-    });
-  });
-
-  actualizarEstadoBotones();
 </script>
-
 
