@@ -276,6 +276,32 @@
   let modoEdicion = false;
   let modoBorrado = false;
 
+ // Referencias DOM
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const guardarRegistroBtn = document.getElementById('guardarRegistro');
+  const descargarExcelBtn = document.getElementById('descargarExcel');
+  const campoSeleccionadoSpan = document.getElementById('campoSeleccionado');
+  const transcripcionDiv = document.getElementById('transcripcion');
+  const checkTranscripcionBtn = document.getElementById('checkTranscripcion');
+  const wrongTranscripcionBtn = document.getElementById('wrongTranscripcion');
+  const tablaBody = document.getElementById('tablaBody');
+  const eliminarTodosBtn = document.getElementById('eliminarTodosBtn');
+  const toggleEdicionBtn = document.getElementById('toggleEdicionBtn');
+  const activarBorradoBtn = document.getElementById('activarBorradoBtn');
+  const buscarRegistroBtn = document.getElementById('buscarRegistroBtn');
+  const inputBusqueda = document.getElementById('inputBusqueda');
+  const cerrarBusquedaBtn = document.getElementById('cerrarBusquedaBtn');
+
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const editModal = document.getElementById('editModal');
+  const editFieldBtn = document.getElementById('editField');
+  const cancelModalBtn = document.getElementById('cancelModal');
+  const editContainer = document.getElementById('editContainer');
+  const editTextarea = document.getElementById('editTextarea');
+  const guardarEdicionBtn = document.getElementById('guardarEdicion');
+  const editFieldLabel = document.getElementById('editFieldLabel');
+
   const campos = ['nombre', 'edad', 'pueblo', 'motivo', 'diagnostico', 'tratamiento', 'seguimiento'];
 
   const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfglAdf-IhYnrfNNLYpkKz93eF9F9d080m7u8gjCepP2lbkxg/formResponse';
