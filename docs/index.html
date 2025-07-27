@@ -447,7 +447,7 @@
   });
 
   function agregarOActualizarRegistro(campo, valor) {
-    if (!filaActual && campo === 'nombre') {
+    if (!filaActual) {
       filaActual = document.createElement('tr');
       filaActual.classList.add('borrable');
       campos.forEach(c => {
@@ -459,18 +459,11 @@
       });
       tablaBody.appendChild(filaActual);
     }
-
-    if (!filaActual) {
-      alert('Por favor, introduce primero el Nombre y Apellidos antes que otros campos.');
-      return;
-    }
-
     const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
     if (celda) {
       celda.textContent = valor;
     }
   }
-
 
   if (guardarRegistroBtn) guardarRegistroBtn.addEventListener('click', () => {
     if (!filaActual) {
@@ -552,7 +545,6 @@
           td.style.backgroundColor = '';
         });
       });
-      activarBorradoBtn.style.display = 'inline-block'
     }
   });
 
