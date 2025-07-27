@@ -260,13 +260,6 @@
 </div>
 
 
-
-
-/** CAMBIOS:
- * - Reemplazamos guardarRegistroEnSheet por guardarRegistroEnForm
- * - Usamos Google Forms en vez de Google Sheets
- */
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   let recognition, isRecording = false;
@@ -276,7 +269,7 @@
   let modoEdicion = false;
   let modoBorrado = false;
 
- // Referencias DOM
+  // Referencias DOM
   const startBtn = document.getElementById('startBtn');
   const stopBtn = document.getElementById('stopBtn');
   const guardarRegistroBtn = document.getElementById('guardarRegistro');
@@ -444,4 +437,5 @@
     document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
   });
 </script>
+
 
