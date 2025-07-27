@@ -443,7 +443,7 @@
       alert('No hay texto para editar');
       return;
     }
-    abrirModalEdicion(campoSeleccionado, textoCompleto.trim());
+    abrirModalEdicion(campoSeleccionado, textoCompleto.trim(), true);
   });
 
   function agregarOActualizarRegistro(campo, valor) {
@@ -619,26 +619,55 @@
   }
 
   // Modal para editar texto mal transcrito
-  function abrirModalEdicion(campo, texto) {
-    if (!campo) {
-      alert('Selecciona un campo primero');
-      return;
-    }
-    editFieldLabel.textContent = 'Editar ' + campo.charAt(0).toUpperCase() + campo.slice(1);
-    editTextarea.value = texto;
-    modalBackdrop.style.display = 'flex';
-    editTextarea.focus();
-
-    guardarEdicionBtn.onclick = () => {
-      agregarOActualizarRegistro(campo, editTextarea.value.trim());
-      modalBackdrop.style.display = 'none';
-      textoCompleto = "";
-      if (transcripcionDiv) transcripcionDiv.textContent = "";
-    };
-    cancelModalBtn.onclick = () => {
-      modalBackdrop.style.display = 'none';
-    };
+  function abrirModalEdicion(campo, texto, mostrarDirectamente = false) {
+  if (!campo) {
+    alert('Selecciona un campo primero');
+    return;
   }
+
+  editFieldLabel.textContent = 'Editar ' + campo.charAt(0).toUpperCase() + campo.slice(1);
+  editTextarea.value = texto;
+
+  modalBackdrop.style.display = 'flex';
+  editModal.style.display = 'block';
+  editTextarea.focus();
+
+  // Mostrar el contenedor de edición si se indica
+  if (mostrarDirectamente) {
+    editContainer.style.display = 'block';
+    editFieldBtn.style.display = 'none'; // oculta botón "Editar manualmente"
+  } else {
+    editContainer.style.display = 'none';
+    editFieldBtn.style.display = 'inline-block';
+  }
+
+  guardarEdicionBtn.onclick = () => {
+    const textoEditado = editTextarea.value.trim();
+    if (textoEditado) {
+      if (campo === 'edad') {
+        agregarOActualizarRegistro(campo, convertirSiEsNumero(textoEditado));
+      } else {
+        agregarOActualizarRegistro(campo, textoEditado);
+      }
+    }
+    modalBackdrop.style.display = 'none';
+    editModal.style.display = 'none';
+    textoCompleto = "";
+    if (transcripcionDiv) transcripcionDiv.textContent = "";
+  };
+
+  cancelModalBtn.onclick = () => {
+    modalBackdrop.style.display = 'none';
+    editModal.style.display = 'none';
+  };
+
+  editFieldBtn.onclick = () => {
+    editContainer.style.display = 'block';
+    editFieldBtn.style.display = 'none';
+    editTextarea.focus();
+  };
+}
+
 
   // Inicial
   actualizarEstadoBotones();
