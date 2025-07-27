@@ -108,7 +108,7 @@
       z-index: 999;
     }
 
-    #startBtn, #stopBtn, #guardarRegistro, #descargarExcel {
+    #startBtn, #stopBtn, #guardarRegistro, #descargarExcel, #siguientePaciente, #guardarTodo {
       margin-right: 10px;
       padding: 10px 16px;
       border: none;
@@ -117,11 +117,14 @@
       margin-top: 10px;
       user-select: none;
     }
+    
 
     #startBtn { background-color: #4caf50; color: white; }
     #stopBtn { background-color: #e74c3c; color: white; }
     #guardarRegistro { background-color: #3498db; color: white; }
     #descargarExcel { background-color: #8e44ad; color: white; }
+    #siguientePaciente { background-color: #f39c12; color: white; }
+    #guardarTodo { background-color: #3498db; color: white; }
 
     .transcripcion-container {
       display: flex;
@@ -202,7 +205,8 @@
   <div>
     <button id="startBtn" disabled>Empezar</button>
     <button id="stopBtn" disabled>Detener</button>
-    <button id="guardarRegistro">Guardar Registro</button>
+    <button id="siguientePaciente"> Siguiente paciente</button>
+    <button id="guardarTodo"> Guardar registro(s)</button>
     <button id="descargarExcel">📥 Descargar Excel</button>
   </div>
 
@@ -296,6 +300,8 @@
   const editTextarea = document.getElementById('editTextarea');
   const guardarEdicionBtn = document.getElementById('guardarEdicion');
   const editFieldLabel = document.getElementById('editFieldLabel');
+  const siguientePacienteBtn = document.getElementById('siguientePaciente');
+  const guardarTodoBtn = document.getElementById('guardarTodo');
 
   const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfglAdf-IhYnrfNNLYpkKz93eF9F9d080m7u8gjCepP2lbkxg/formResponse';
   const FORM_FIELD_MAPPING = {
@@ -699,6 +705,71 @@
     };
   }
 
+  siguientePacienteBtn.addEventListener('click', () => {
+  if (!filaActual) {
+    alert('No hay datos del paciente actual.');
+    return;
+  }
+
+  const nombre = filaActual.querySelector('[data-field="nombre"]').textContent.trim();
+  if (!nombre) {
+    alert('El campo "Nombre y Apellidos" es obligatorio');
+    return;
+  }
+
+  filaActual = null;
+  campoSeleccionado = null;
+  campoSeleccionadoSpan.textContent = 'Ninguno';
+  document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
+  actualizarEstadoBotones();
+});
+
+guardarTodoBtn.addEventListener('click', () => {
+  const filas = Array.from(tablaBody.querySelectorAll('tr'));
+  if (filas.length === 0) {
+    alert('No hay registros para guardar');
+    return;
+  }
+
+  let confirmacion = confirm(`Se enviarán ${filas.length} registro(s). ¿Continuar?`);
+  if (!confirmacion) return;
+
+  let total = filas.length;
+  let enviados = 0;
+
+  filas.forEach((fila, idx) => {
+    const formData = new FormData();
+    campos.forEach(campo => {
+      const celda = fila.querySelector(`[data-field="${campo}"]`);
+      if (celda && FORM_FIELD_MAPPING[campo]) {
+        formData.append(FORM_FIELD_MAPPING[campo], celda.textContent.trim());
+      }
+    });
+
+    fetch(FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: formData
+    })
+    .then(() => {
+      enviados++;
+      if (enviados === total) {
+        alert('Todos los registros han sido enviados al formulario.');
+        tablaBody.innerHTML = '';
+        filaActual = null;
+        campoSeleccionado = null;
+        campoSeleccionadoSpan.textContent = 'Ninguno';
+        actualizarEstadoBotones();
+      }
+    })
+    .catch(err => {
+      console.error('Error al enviar:', err);
+      alert('Hubo un error al enviar uno o más registros.');
+    });
+  });
+});
+
   actualizarEstadoBotones();
 </script>
+
 
