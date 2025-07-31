@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tu Casa en África - Registro de Consulta</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 20px;
+      background-color: #f3f6f9;
+      color: #2c3e50;
+      background-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1470&q=80');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.85);
+      z-index: -1;
+    }
+
+    h1, h2 {
+      color: #1a3c40;
+    }
+
+    .field-btn {
+      margin: 5px;
+      padding: 10px 16px;
+      cursor: pointer;
+      border: none;
+      background-color: #d0e8e4;
+      border-radius: 6px;
+      transition: background 0.3s;
+      color: #1a3c40;
+      font-weight: bold;
+      user-select: none;
+    }
+
+    .field-btn:hover {
+      background-color: #b8dcd6;
+    }
+
+    .field-btn.active {
+      background-color: #2c9c7b;
+      color: white;
+    }
+
+    #transcripcion {
+      min-height: 30px;
+      border: 1px solid #ccc;
+      padding: 6px;
+      width: 400px;
+      background-color: #fff;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      user-select: text;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .trans-control {
+      margin-left: 10px;
+      display: flex;
+      gap: 10px;
+      margin-top: -6px;
+    }
+
+    .trans-control button {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      user-select: none;
+      color: #2c3e50;
+      transition: color 0.2s;
+    }
+
+    .trans-control button:hover {
+      color: #2980b9;
+    }
+
+    .edit-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      border-radius: 8px;
+      display: none;
+      z-index: 1000;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.3);
+      display: none;
+      z-index: 999;
+    }
+
+    #startBtn, #stopBtn, #guardarRegistro, #descargarExcel {
+      margin-right: 10px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-top: 10px;
+      user-select: none;
+    }
+
+    #startBtn { background-color: #4caf50; color: white; }
+    #stopBtn { background-color: #e74c3c; color: white; }
+    #guardarRegistro { background-color: #3498db; color: white; }
+    #descargarExcel { background-color: #8e44ad; color: white; }
+
+    .transcripcion-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .tabla-container {
+      max-height: 320px;
+      overflow-y: auto;
+      margin-top: 20px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      user-select: none;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+      vertical-align: middle;
+      position: relative;
+    }
+
+    th {
+      background-color: #eef2f3;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    td.editable {
+      cursor: pointer;
+    }
+
+    tr.borrable:hover {
+      background-color: #fceaea;
+    }
+
+    tr.borrable td {
+      cursor: pointer;
+    }
+
+    /* Botones en encabezado */
+    h2 > span > button {
+      margin-left: 6px;
+      user-select: none;
+    }
+
+  </style>
+</head>
+
+
+
+<body>
+
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1 style="margin: 0;">Tu Casa en África – Registro de Consulta</h1>
+    <img src="logo.jpg" alt="Logo Tu Casa en África" style="height: 140px;">
+  </div>
+
+  <div>
+    <button class="field-btn" data-field="nombre">Nombre y Apellidos</button>
+    <button class="field-btn" data-field="edad">Edad</button>
+    <button class="field-btn" data-field="pueblo">Pueblo</button>
+    <button class="field-btn" data-field="motivo">Motivo</button>
+    <button class="field-btn" data-field="diagnostico">Diagnóstico</button>
+    <button class="field-btn" data-field="tratamiento">Tratamiento</button>
+    <button class="field-btn" data-field="seguimiento">¿Seguimiento?</button>
+  </div>
+
+  <div>
+    <button id="startBtn" disabled>Empezar</button>
+    <button id="stopBtn" disabled>Detener</button>
+    <button id="guardarRegistro">Guardar Registro</button>
+    <button id="descargarExcel">📥 Descargar Excel</button>
+    <button id="consultarIA" style="background-color: #16a085; color: white; padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">🤖 Consultar IA</button>
+  </div>
+
+  <p><strong>Campo seleccionado:</strong> <span id="campoSeleccionado">Ninguno</span></p>
+
+  <div class="transcripcion-container" aria-live="polite" aria-atomic="true">
+    <div id="transcripcion" aria-label="Texto transcripto"></div>
+    <div class="trans-control" role="group" aria-label="Controles de transcripción">
+      <button id="checkTranscripcion" aria-label="Aceptar transcripción">✔️</button>
+      <button id="wrongTranscripcion" aria-label="Editar transcripción">❌</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" tabindex="-1"></div>
+
+  <div class="edit-modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="0">
+    <h3 id="modalTitle">Editar campo</h3>
+    <p>¿Deseas volver a grabar este campo o editarlo manualmente?</p>
+    <button id="editField">Editar manualmente</button>
+    <button id="cancelModal">Cancelar</button>
+    <div id="editContainer" style="margin-top:10px; display:none;">
+      <label id="editFieldLabel" for="editTextarea"></label>
+      <textarea id="editTextarea" style="width:100%; height:80px;" aria-multiline="true"></textarea>
+      <button id="guardarEdicion">Guardar</button>
+    </div>
+  </div>
+
+ <h2 style="display:flex; align-items: center; justify-content: space-between;">
+  <span>Registros</span>
+  <span>
+    <button id="eliminarTodosBtn" style="background:#e74c3c; color:white; border:none; padding:6px 10px; border-radius:5px;">🗑️ Eliminar todos</button>
+    <button id="toggleEdicionBtn" style="background:#f39c12; color:white; border:none; padding:6px 10px; border-radius:5px;">✏️ Editar registros</button>
+    <button id="activarBorradoBtn" style="background:#c0392b; color:white; border:none; padding:6px 10px; border-radius:5px;">❌ Borrar registro</button>
+    <button id="buscarRegistroBtn" style="background:#3498db; color:white; border:none; padding:6px 10px; border-radius:5px;">🔍 Buscar</button>
+    <input id="inputBusqueda" type="text" placeholder="Buscar registro..." style="margin-left:10px; padding:6px; border-radius:5px; border:1px solid #ccc; display:none;">
+    <button id="cerrarBusquedaBtn" style="background:#95a5a6; color:white; border:none; padding:6px 10px; border-radius:5px; display:none; margin-left:10px;">❌ Cerrar búsqueda</button>
+  </span>
+</h2>
+
+<div class="tabla-container" tabindex="0" aria-label="Tabla de registros">
+  <table id="tabla-registros" role="grid" aria-readonly="true">
+    <thead>
+      <tr>
+        <th scope="col">Nombre</th>
+        <th scope="col">Edad</th>
+        <th scope="col">Pueblo</th>
+        <th scope="col">Motivo</th>
+        <th scope="col">Diagnóstico</th>
+        <th scope="col">Tratamiento</th>
+        <th scope="col">¿Seguimiento?</th>
+      </tr>
+    </thead>
+    <tbody id="tablaBody" role="rowgroup"></tbody>
+  </table>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  // Variables globales
+  let recognition, isRecording = false;
+  let textoCompleto = "";
+  let campoSeleccionado = null;
+  let filaActual = null;
+  let modoEdicion = false;
+  let modoBorrado = false;
+
+  const campos = ['nombre', 'edad', 'pueblo', 'motivo', 'diagnostico', 'tratamiento', 'seguimiento'];
+
+  // Referencias DOM
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const guardarRegistroBtn = document.getElementById('guardarRegistro');
+  const descargarExcelBtn = document.getElementById('descargarExcel');
+  const campoSeleccionadoSpan = document.getElementById('campoSeleccionado');
+  const transcripcionDiv = document.getElementById('transcripcion');
+  const checkTranscripcionBtn = document.getElementById('checkTranscripcion');
+  const wrongTranscripcionBtn = document.getElementById('wrongTranscripcion');
+  const tablaBody = document.getElementById('tablaBody');
+  const eliminarTodosBtn = document.getElementById('eliminarTodosBtn');
+  const toggleEdicionBtn = document.getElementById('toggleEdicionBtn');
+  const activarBorradoBtn = document.getElementById('activarBorradoBtn');
+  const buscarRegistroBtn = document.getElementById('buscarRegistroBtn');
+  const inputBusqueda = document.getElementById('inputBusqueda');
+  const cerrarBusquedaBtn = document.getElementById('cerrarBusquedaBtn');
+
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const editModal = document.getElementById('editModal');
+  const editFieldBtn = document.getElementById('editField');
+  const cancelModalBtn = document.getElementById('cancelModal');
+  const editContainer = document.getElementById('editContainer');
+  const editTextarea = document.getElementById('editTextarea');
+  const guardarEdicionBtn = document.getElementById('guardarEdicion');
+  const editFieldLabel = document.getElementById('editFieldLabel');
+
+  // Función para convertir texto a número (simplificada)
+  function textoANumero(texto) {
+    const unidades = {
+      'cero':0,'uno':1,'una':1,'dos':2,'tres':3,'cuatro':4,'cinco':5,'seis':6,'siete':7,'ocho':8,'nueve':9
+    };
+    const especiales = {
+      'diez':10,'once':11,'doce':12,'trece':13,'catorce':14,'quince':15,
+      'dieciseis':16,'diecisiete':17,'dieciocho':18,'diecinueve':19,
+      'veinte':20,'veintiuno':21,'veintidos':22,'veintitres':23,'veinticuatro':24,
+      'veinticinco':25,'veintiseis':26,'veintisiete':27,'veintiocho':28,'veintinueve':29
+    };
+    const decenas = {
+      'treinta':30,'cuarenta':40,'cincuenta':50,'sesenta':60,'setenta':70,'ochenta':80,'noventa':90
+    };
+
+    texto = texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    texto = texto.replace(/\s+/g,''); // eliminar espacios
+
+    if (especiales[texto] !== undefined) return especiales[texto];
+    if (unidades[texto] !== undefined) return unidades[texto];
+    if (decenas[texto] !== undefined) return decenas[texto];
+
+    // Manejar decenas y unidades unidas por 'y' o 'i'
+    let partes = texto.split('y');
+    if (partes.length === 2) {
+      let dec = decenas[partes[0]];
+      let uni = unidades[partes[1]];
+      if (dec !== undefined && uni !== undefined) return dec + uni;
+    }
+    partes = texto.split('i');
+    if (partes.length === 2) {
+      let dec = decenas[partes[0]];
+      let uni = unidades[partes[1]];
+      if (dec !== undefined && uni !== undefined) return dec + uni;
+    }
+
+    return texto;
+  }
+
+  function convertirSiEsNumero(texto) {
+    let n = textoANumero(texto);
+    if (typeof n === 'number' && !isNaN(n)) {
+      return n.toString();
+    }
+    return texto;
+  }
+
+  function actualizarEstadoBotones() {
+    if (startBtn) startBtn.disabled = (campoSeleccionado === null);
+    if (stopBtn) stopBtn.disabled = true;
+  }
+
+  document.querySelectorAll('.field-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      campoSeleccionado = btn.dataset.field;
+      if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = btn.textContent;
+      textoCompleto = "";
+      if (transcripcionDiv) transcripcionDiv.textContent = "";
+      actualizarEstadoBotones();
+    });
+  });
+
+  try {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      if (startBtn) startBtn.disabled = true;
+      if (stopBtn) stopBtn.disabled = false;
+    };
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        let transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          textoCompleto += transcript.trim() + " ";
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      if (transcripcionDiv) transcripcionDiv.textContent = textoCompleto + interimTranscript;
+    };
+
+    recognition.onerror = (event) => {
+      alert("Error en reconocimiento de voz: " + event.error);
+      isRecording = false;
+      if (startBtn) startBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = true;
+    };
+
+    recognition.onend = () => {
+      isRecording = false;
+      if (startBtn) startBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = true;
+    };
+
+  } catch (e) {
+    alert("No se soporta reconocimiento de voz en este navegador.");
+    if (startBtn) startBtn.disabled = true;
+    if (stopBtn) stopBtn.disabled = true;
+  }
+
+  if (startBtn) startBtn.addEventListener('click', () => {
+    if (recognition && !isRecording) {
+      textoCompleto = "";
+      if (transcripcionDiv) transcripcionDiv.textContent = "";
+      recognition.start();
+    }
+  });
+
+  if (stopBtn) stopBtn.addEventListener('click', () => {
+    if (recognition && isRecording) {
+      recognition.stop();
+    }
+  });
+
+  if (checkTranscripcionBtn) checkTranscripcionBtn.addEventListener('click', () => {
+    if (!campoSeleccionado) {
+      alert('Selecciona un campo primero');
+      return;
+    }
+    if (!textoCompleto.trim()) {
+      alert('No hay texto para guardar');
+      return;
+    }
+    let valorFinal = textoCompleto.trim();
+    if (campoSeleccionado === 'edad') {
+      valorFinal = convertirSiEsNumero(valorFinal);
+    }
+    agregarOActualizarRegistro(campoSeleccionado, valorFinal);
+    textoCompleto = "";
+    if (transcripcionDiv) transcripcionDiv.textContent = "";
+  });
+
+  if (wrongTranscripcionBtn) wrongTranscripcionBtn.addEventListener('click', () => {
+    if (!textoCompleto.trim()) {
+      alert('No hay texto para editar');
+      return;
+    }
+    abrirModalEdicion(campoSeleccionado, textoCompleto.trim(), true);
+  });
+
+  function agregarOActualizarRegistro(campo, valor) {
+    if (!filaActual) {
+      filaActual = document.createElement('tr');
+      filaActual.classList.add('borrable');
+      campos.forEach(c => {
+        const td = document.createElement('td');
+        td.textContent = "";
+        td.dataset.field = c;
+        td.classList.add('editable');
+        filaActual.appendChild(td);
+      });
+      tablaBody.appendChild(filaActual);
+    }
+    const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
+    if (celda) {
+      celda.textContent = valor;
+    }
+  }
+
+  if (guardarRegistroBtn) guardarRegistroBtn.addEventListener('click', () => {
+    if (!filaActual) {
+      alert('No hay datos para guardar');
+      return;
+    }
+    const nombre = filaActual.querySelector('[data-field="nombre"]').textContent.trim();
+    if (!nombre) {
+      alert('El campo "Nombre y Apellidos" es obligatorio');
+      return;
+    }
+    filaActual = null;
+    campoSeleccionado = null;
+    if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
+    actualizarEstadoBotones();
+    document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
+    alert('Registro guardado');
+  });
+
+  if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
+    const wb = XLSX.utils.book_new();
+    let data = [];
+    const header = campos.map(c => {
+      switch(c) {
+        case 'nombre': return 'Nombre y Apellidos';
+        case 'edad': return 'Edad';
+        case 'pueblo': return 'Pueblo';
+        case 'motivo': return 'Motivo';
+        case 'diagnostico': return 'Diagnóstico';
+        case 'tratamiento': return 'Tratamiento';
+        case 'seguimiento': return '¿Seguimiento?';
+        default: return c;
+      }
+    });
+    data.push(header);
+
+    Array.from(tablaBody.children).forEach(tr => {
+      const fila = [];
+      campos.forEach(campo => {
+        const celda = tr.querySelector(`[data-field="${campo}"]`);
+        fila.push(celda ? celda.textContent : '');
+      });
+      data.push(fila);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, "Registros");
+    XLSX.writeFile(wb, "Registros.xlsx");
+  });
+
+  eliminarTodosBtn.addEventListener('click', () => {
+    if (confirm('¿Estás seguro de eliminar todos los registros?')) {
+      tablaBody.innerHTML = "";
+      filaActual = null;
+      campoSeleccionado = null;
+      if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
+      actualizarEstadoBotones();
+    }
+  });
+
+  toggleEdicionBtn.addEventListener('click', () => {
+    modoEdicion = !modoEdicion;
+    toggleEdicionBtn.textContent = modoEdicion ? '❌ Cancelar edición' : '✏️ Editar registros';
+    if (modoEdicion) {
+      activarBorradoBtn.style.display = 'none';
+      buscarRegistroBtn.style.display = 'inline-block';
+      inputBusqueda.style.display = 'none';
+      cerrarBusquedaBtn.style.display = 'none';
+      tablaBody.querySelectorAll('tr').forEach(tr => {
+        tr.querySelectorAll('td.editable').forEach(td => {
+          td.setAttribute('contenteditable', 'true');
+          td.style.backgroundColor = '#ffffdd';
+        });
+      });
+    } else {
+      tablaBody.querySelectorAll('tr').forEach(tr => {
+        tr.querySelectorAll('td.editable').forEach(td => {
+          td.removeAttribute('contenteditable');
+          td.style.backgroundColor = '';
+        });
+      });
+    }
+  });
+
+  activarBorradoBtn.addEventListener('click', () => {
+    modoBorrado = !modoBorrado;
+    activarBorradoBtn.textContent = modoBorrado ? '✔️ Confirmar borrado' : '❌ Borrar registro';
+    if (modoBorrado) {
+      toggleEdicionBtn.style.display = 'none';
+      buscarRegistroBtn.style.display = 'none';
+      inputBusqueda.style.display = 'none';
+      cerrarBusquedaBtn.style.display = 'none';
+      tablaBody.querySelectorAll('tr').forEach(tr => {
+        tr.style.cursor = 'pointer';
+        tr.classList.add('borrable');
+      });
+    } else {
+      toggleEdicionBtn.style.display = 'inline-block';
+      buscarRegistroBtn.style.display = 'inline-block';
+      tablaBody.querySelectorAll('tr').forEach(tr => {
+        tr.style.cursor = '';
+        tr.classList.remove('borrable');
+      });
+    }
+  });
+
+  tablaBody.addEventListener('click', (e) => {
+    let tr = e.target.closest('tr');
+    if (!tr) return;
+
+    if (modoBorrado) {
+      if (confirm('¿Eliminar este registro?')) {
+        tr.remove();
+      }
+    }
+  });
+
+  buscarRegistroBtn.addEventListener('click', () => {
+    buscarRegistroBtn.style.display = 'none';
+    inputBusqueda.style.display = 'inline-block';
+    cerrarBusquedaBtn.style.display = 'inline-block';
+    inputBusqueda.focus();
+  });
+
+  cerrarBusquedaBtn.addEventListener('click', () => {
+    inputBusqueda.value = "";
+    cerrarBusquedaBtn.style.display = 'none';
+    inputBusqueda.style.display = 'none';
+    buscarRegistroBtn.style.display = 'inline-block';
+    mostrarTodasFilas();
+  });
+
+  inputBusqueda.addEventListener('input', () => {
+    let valor = inputBusqueda.value.trim().toLowerCase();
+    if (!valor) {
+      mostrarTodasFilas();
+      return;
+    }
+    filtrarRegistros(valor);
+  });
+
+  function mostrarTodasFilas() {
+    tablaBody.querySelectorAll('tr').forEach(tr => {
+      tr.style.display = '';
+    });
+  }
+
+  function filtrarRegistros(texto) {
+    tablaBody.querySelectorAll('tr').forEach(tr => {
+      const contenido = tr.textContent.toLowerCase();
+      tr.style.display = contenido.includes(texto) ? '' : 'none';
+    });
+  }
+
+  // Modal para editar texto mal transcrito
+  function abrirModalEdicion(campo, texto, mostrarDirectamente = false) {
+  if (!campo) {
+    alert('Selecciona un campo primero');
+    return;
+  }
+
+  editFieldLabel.textContent = 'Editar ' + campo.charAt(0).toUpperCase() + campo.slice(1);
+  editTextarea.value = texto;
+
+  modalBackdrop.style.display = 'flex';
+  editModal.style.display = 'block';
+  editTextarea.focus();
+
+  // Mostrar el contenedor de edición si se indica
+  if (mostrarDirectamente) {
+    editContainer.style.display = 'block';
+    editFieldBtn.style.display = 'none'; // oculta botón "Editar manualmente"
+  } else {
+    editContainer.style.display = 'none';
+    editFieldBtn.style.display = 'inline-block';
+  }
+
+  guardarEdicionBtn.onclick = () => {
+    const textoEditado = editTextarea.value.trim();
+    if (textoEditado) {
+      if (campo === 'edad') {
+        agregarOActualizarRegistro(campo, convertirSiEsNumero(textoEditado));
+      } else {
+        agregarOActualizarRegistro(campo, textoEditado);
+      }
+    }
+    modalBackdrop.style.display = 'none';
+    editModal.style.display = 'none';
+    textoCompleto = "";
+    if (transcripcionDiv) transcripcionDiv.textContent = "";
+  };
+
+  cancelModalBtn.onclick = () => {
+    modalBackdrop.style.display = 'none';
+    editModal.style.display = 'none';
+  };
+
+  editFieldBtn.onclick = () => {
+    editContainer.style.display = 'block';
+    editFieldBtn.style.display = 'none';
+    editTextarea.focus();
+  };
+}
+
+// --- Consultar IA ---
+
+  const consultarIABtn = document.getElementById('consultarIA');
+
+  if (consultarIABtn) {
+    consultarIABtn.addEventListener('click', abrirConsultaIA);
+  }
+
+  function abrirConsultaIA() {
+    if (!document.getElementById('modalConsultaIA')) {
+      const modal = document.createElement('div');
+      modal.id = 'modalConsultaIA';
+      modal.style.position = 'fixed';
+      modal.style.top = '50%';
+      modal.style.left = '50%';
+      modal.style.transform = 'translate(-50%, -50%)';
+      modal.style.background = '#fff';
+      modal.style.padding = '20px';
+      modal.style.borderRadius = '10px';
+      modal.style.boxShadow = '0 0 20px rgba(0,0,0,0.2)';
+      modal.style.zIndex = 9999;
+      modal.style.width = '90%';
+      modal.style.maxWidth = '600px';
+
+      modal.innerHTML = `
+        <h3 style="margin-top:0;">💬 Consultar IA</h3>
+        <textarea id="preguntaIA" placeholder="Ej.: ¿Cuántos pacientes tienen seguimiento?" style="width:100%; height:80px; border-radius:6px; padding:10px;"></textarea>
+        <input type="file" id="fileExcel" accept=".xlsx, .xls" style="margin-top: 10px;" />
+        <button id="btnEnviarIA" style="margin-top:10px; padding:10px 16px; background:#3498db; color:white; border:none; border-radius:6px; cursor:pointer;">Enviar</button>
+        <button id="cerrarIA" style="margin-left:10px; background:#ccc; padding:10px 16px; border:none; border-radius:6px;">Cerrar</button>
+        <div id="respuestaIA" style="margin-top:15px; background:#f4f6f9; padding:10px; border-left:4px solid #3498db; white-space:pre-wrap;"></div>
+      `;
+      document.body.appendChild(modal);
+
+      let datosExcel = [];
+
+      // Cargar librería SheetJS (xlsx)
+      if (!window.XLSX) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js';
+        script.onload = () => console.log('SheetJS cargado');
+        document.head.appendChild(script);
+      }
+
+      // Leer archivo Excel al seleccionarlo
+      document.getElementById('fileExcel').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          datosExcel = XLSX.utils.sheet_to_json(worksheet);
+          alert(`Archivo cargado con ${datosExcel.length} filas.`);
+        };
+        reader.readAsArrayBuffer(file);
+      });
+
+      // Enviar consulta
+      document.getElementById('btnEnviarIA').onclick = async () => {
+        const pregunta = document.getElementById('preguntaIA').value.trim();
+        if (!pregunta) return alert('Escribe una pregunta');
+
+        document.getElementById('respuestaIA').textContent = '⏳ Consultando...';
+
+        // Datos a usar: si hay datos Excel, usar esos, si no, usar tablaBody (tu código original)
+        let datosParaIA;
+        if (datosExcel.length > 0) {
+          datosParaIA = datosExcel;
+        } else {
+          datosParaIA = Array.from(tablaBody.children).map(tr => {
+            const obj = {};
+            campos.forEach(c => {
+              const celda = tr.querySelector(`[data-field="${c}"]`);
+              obj[c] = celda ? celda.textContent.trim() : '';
+            });
+            return obj;
+          });
+        }
+
+        try {
+          const resp = await fetch('http://localhost:3000/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
+            })
+          });
+          const json = await resp.json();
+          document.getElementById('respuestaIA').textContent = json.text || 'No se recibió respuesta.';
+        } catch (e) {
+          document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
+        }
+      };
+
+      document.getElementById('cerrarIA').onclick = () => {
+        modal.remove();
+      };
+    }
+  }
+
+
+
+  // Inicial
+  actualizarEstadoBotones();
+</script>
