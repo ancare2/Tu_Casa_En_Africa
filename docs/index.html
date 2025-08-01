@@ -436,21 +436,26 @@
 
   if (checkTranscripcionBtn) checkTranscripcionBtn.addEventListener('click', () => {
     if (!campoSeleccionado) {
-      alert('Selecciona un campo primero');
-      return;
-    }
-    if (!textoCompleto.trim()) {
-      alert('No hay texto para guardar');
-      return;
-    }
-    let valorFinal = textoCompleto.trim();
-    if (campoSeleccionado === 'edad') {
-      valorFinal = convertirSiEsNumero(valorFinal);
-    }
-    agregarOActualizarRegistro(campoSeleccionado, valorFinal);
-    textoCompleto = "";
-    if (transcripcionDiv) transcripcionDiv.textContent = "";
-  });
+        alert('Selecciona un campo primero');
+        return;
+      }
+      // Usar el texto visible que puede incluir interino
+      const textoVisible = transcripcionDiv.textContent.trim();
+
+      if (!textoVisible) {
+        alert('No hay texto para guardar');
+        return;
+      }
+
+      let valorFinal = textoVisible;
+      if (campoSeleccionado === 'edad') {
+        valorFinal = convertirSiEsNumero(valorFinal);
+      }
+      agregarOActualizarRegistro(campoSeleccionado, valorFinal);
+
+      textoCompleto = "";
+      if (transcripcionDiv) transcripcionDiv.textContent = "";
+    });
 
   if (wrongTranscripcionBtn) wrongTranscripcionBtn.addEventListener('click', () => {
     if (!textoCompleto.trim()) {
@@ -461,6 +466,7 @@
   });
 
   function agregarOActualizarRegistro(campo, valor) {
+    console.log('Agregar o actualizar campo:', campo, 'valor:', valor);
     if (!filaActual) {
       filaActual = document.createElement('tr');
       filaActual.classList.add('borrable');
