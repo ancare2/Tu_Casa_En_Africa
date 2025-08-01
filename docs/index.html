@@ -297,6 +297,19 @@
   const editTextarea = document.getElementById('editTextarea');
   const guardarEdicionBtn = document.getElementById('guardarEdicion');
   const editFieldLabel = document.getElementById('editFieldLabel');
+  const siguientePacienteBtn = document.getElementById('siguientePaciente');
+  const guardarTodoBtn = document.getElementById('guardarTodo');
+
+  const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfglAdf-IhYnrfNNLYpkKz93eF9F9d080m7u8gjCepP2lbkxg/formResponse';
+  const FORM_FIELD_MAPPING = {
+    nombre: 'entry.1139347399',
+    edad: 'entry.763208739',
+    pueblo: 'entry.519707276',
+    motivo: 'entry.878414618',
+    diagnostico: 'entry.215886227',
+    tratamiento: 'entry.224553225',
+    seguimiento: 'entry.1708441457'
+  };
 
   // Función para convertir texto a número (simplificada)
   function textoANumero(texto) {
