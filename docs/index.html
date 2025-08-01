@@ -747,30 +747,31 @@
       }
 
       // Leer archivo Excel al seleccionarlo
-      document.getElementById('fileExcel').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+      // Cargar automáticamente los datos desde Google Sheets como CSV
+      async function cargarDatosDesdeGoogleSheet() {
+        const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=csv';
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          const data = new Uint8Array(evt.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
+        try {
+          const response = await fetch(urlCSV);
+          const csvText = await response.text();
+          const workbook = XLSX.read(csvText, { type: 'string' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
           datosExcel = XLSX.utils.sheet_to_json(worksheet);
-          alert(`Archivo cargado con ${datosExcel.length} filas.`);
-        };
-        reader.readAsArrayBuffer(file);
-      });
+          alert(`Datos cargados automáticamente (${datosExcel.length} registros).`);
+        } catch (err) {
+          console.error('Error al cargar desde Google Sheets:', err);
+          alert('❌ Error al cargar los datos desde Google Sheets.');
+        }
+      }
 
-      // Enviar consulta
+
       document.getElementById('btnEnviarIA').onclick = async () => {
         const pregunta = document.getElementById('preguntaIA').value.trim();
         if (!pregunta) return alert('Escribe una pregunta');
 
         document.getElementById('respuestaIA').textContent = '⏳ Consultando...';
 
-        // Datos a usar: si hay datos Excel, usar esos, si no, usar tablaBody (tu código original)
         let datosParaIA;
         if (datosExcel.length > 0) {
           datosParaIA = datosExcel;
