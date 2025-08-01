@@ -489,12 +489,32 @@
       alert('El campo "Nombre y Apellidos" es obligatorio');
       return;
     }
+    const formData = new FormData();
+    campos.forEach(campo => {
+      const celda = filaActual.querySelector(`[data-field="${campo}"]`);
+      if (celda && FORM_FIELD_MAPPING[campo]) {
+        formData.append(FORM_FIELD_MAPPING[campo], celda.textContent.trim());
+      }
+    });
+
+    fetch(FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: formData
+    })
+    .then(() => {
+      alert('Registro guardado y enviado al Google Form');
+    })
+    .catch(err => {
+      console.error('Error al enviar al formulario:', err);
+      alert('Registro local guardado, pero hubo un error al enviar al Google Form');
+    });
+
     filaActual = null;
     campoSeleccionado = null;
     if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
     actualizarEstadoBotones();
     document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
-    alert('Registro guardado');
   });
 
   if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
