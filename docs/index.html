@@ -504,7 +504,7 @@
     Array.from(tablaBody.children).forEach(tr => {
       const fila = [];
       campos.forEach(campo => {
-        const celda = tr.querySelector([data-field="${campo}"]);
+        const celda = tr.querySelector(`[data-field="${campo}"]`);
         fila.push(celda ? celda.textContent : '');
       });
       data.push(fila);
@@ -725,7 +725,7 @@
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           datosExcel = XLSX.utils.sheet_to_json(worksheet);
-          alert(Archivo cargado con ${datosExcel.length} filas.);
+          alert(`Archivo cargado con ${datosExcel.length} filas.`);
         };
         reader.readAsArrayBuffer(file);
       });
@@ -745,7 +745,7 @@
           datosParaIA = Array.from(tablaBody.children).map(tr => {
             const obj = {};
             campos.forEach(c => {
-              const celda = tr.querySelector([data-field="${c}"]);
+              const celda = tr.querySelector(`[data-field="${c}"]`);
               obj[c] = celda ? celda.textContent.trim() : '';
             });
             return obj;
@@ -757,7 +757,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              prompt: ${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}
+              prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
             })
           });
           const json = await resp.json();
@@ -772,6 +772,12 @@
       };
     }
   }
+
+
+
+  // Inicial
+  actualizarEstadoBotones();
+</script>
 
 
 
