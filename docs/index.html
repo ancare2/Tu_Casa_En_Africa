@@ -460,89 +460,89 @@
     abrirModalEdicion(campoSeleccionado, textoCompleto.trim(), true);
   });
 
-function agregarOActualizarRegistro(campo, valor) {
-  console.log('🟡 agregarOActualizarRegistro -> Campo:', campo, '| Valor:', valor);
-
-  if (!filaActual) {
-    console.log('🆕 No hay fila actual. Creando una nueva fila...');
-    filaActual = document.createElement('tr');
-    filaActual.classList.add('borrable');
-
-    campos.forEach(c => {
-      const td = document.createElement('td');
-      td.textContent = "";
-      td.dataset.field = c;
-      td.classList.add('editable');
-      filaActual.appendChild(td);
-    });
-
-    tablaBody.appendChild(filaActual);
-    console.log('✅ Fila creada y agregada a la tabla.');
-  }
-
-  const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
-  if (celda) {
-    console.log(`✏️ Actualizando celda "${campo}" con valor:`, valor);
-    celda.textContent = valor;
-  } else {
-    console.warn(`❌ No se encontró la celda para el campo: ${campo}`);
-    console.table(Array.from(filaActual.children).map(td => td.dataset.field));
-  }
-}
-
-if (guardarRegistroBtn) {
-  guardarRegistroBtn.addEventListener('click', () => {
-    console.log('🟢 Clic en Guardar Registro');
-
+  function agregarOActualizarRegistro(campo, valor) {
+    console.log('🟡 agregarOActualizarRegistro -> Campo:', campo, '| Valor:', valor);
+  
     if (!filaActual) {
-      alert('No hay datos para guardar');
-      console.warn('❌ filaActual es null. No se puede guardar.');
-      return;
+      console.log('🆕 No hay fila actual. Creando una nueva fila...');
+      filaActual = document.createElement('tr');
+      filaActual.classList.add('borrable');
+  
+      campos.forEach(c => {
+        const td = document.createElement('td');
+        td.textContent = "";
+        td.dataset.field = c;
+        td.classList.add('editable');
+        filaActual.appendChild(td);
+      });
+  
+      tablaBody.appendChild(filaActual);
+      console.log('✅ Fila creada y agregada a la tabla.');
     }
-
-    const nombre = filaActual.querySelector('[data-field="nombre"]').textContent.trim();
-    if (!nombre) {
-      alert('El campo "Nombre y Apellidos" es obligatorio');
-      console.warn('❌ Falta el campo nombre. Cancelando guardado.');
-      return;
+  
+    const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
+    if (celda) {
+      console.log(`✏️ Actualizando celda "${campo}" con valor:`, valor);
+      celda.textContent = valor;
+    } else {
+      console.warn(`❌ No se encontró la celda para el campo: ${campo}`);
+      console.table(Array.from(filaActual.children).map(td => td.dataset.field));
     }
-
-    const formData = new FormData();
-
-    campos.forEach(campo => {
-      const celda = filaActual.querySelector(`[data-field="${campo}"]`);
-      const valor = celda ? celda.textContent.trim() : '';
-      if (FORM_FIELD_MAPPING[campo]) {
-        formData.append(FORM_FIELD_MAPPING[campo], valor);
-        console.log(`📦 Campo [${campo}] agregado al formulario con valor:`, valor);
-      } else {
-        console.warn(`⚠️ No hay mapeo en FORM_FIELD_MAPPING para el campo: ${campo}`);
+  }
+  
+  if (guardarRegistroBtn) {
+    guardarRegistroBtn.addEventListener('click', () => {
+      console.log('🟢 Clic en Guardar Registro');
+  
+      if (!filaActual) {
+        alert('No hay datos para guardar');
+        console.warn('❌ filaActual es null. No se puede guardar.');
+        return;
       }
+  
+      const nombre = filaActual.querySelector('[data-field="nombre"]').textContent.trim();
+      if (!nombre) {
+        alert('El campo "Nombre y Apellidos" es obligatorio');
+        console.warn('❌ Falta el campo nombre. Cancelando guardado.');
+        return;
+      }
+  
+      const formData = new FormData();
+  
+      campos.forEach(campo => {
+        const celda = filaActual.querySelector(`[data-field="${campo}"]`);
+        const valor = celda ? celda.textContent.trim() : '';
+        if (FORM_FIELD_MAPPING[campo]) {
+          formData.append(FORM_FIELD_MAPPING[campo], valor);
+          console.log(`📦 Campo [${campo}] agregado al formulario con valor:`, valor);
+        } else {
+          console.warn(`⚠️ No hay mapeo en FORM_FIELD_MAPPING para el campo: ${campo}`);
+        }
+      });
+  
+      fetch(FORM_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: formData
+      })
+      .then(() => {
+        alert('Registro guardado y enviado al Google Form');
+        console.log('✅ Registro enviado al Google Form.');
+      })
+      .catch(err => {
+        console.error('❌ Error al enviar al formulario:', err);
+        alert('Registro local guardado, pero hubo un error al enviar al Google Form');
+      });
+  
+      filaActual = null;
+      campoSeleccionado = null;
+      if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
+      actualizarEstadoBotones();
+      document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
+  
+      console.log('🔁 Estado reiniciado después del guardado.');
     });
-
-    fetch(FORM_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: formData
-    })
-    .then(() => {
-      alert('Registro guardado y enviado al Google Form');
-      console.log('✅ Registro enviado al Google Form.');
-    })
-    .catch(err => {
-      console.error('❌ Error al enviar al formulario:', err);
-      alert('Registro local guardado, pero hubo un error al enviar al Google Form');
-    });
-
-    filaActual = null;
-    campoSeleccionado = null;
-    if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
-    actualizarEstadoBotones();
-    document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
-
-    console.log('🔁 Estado reiniciado después del guardado.');
-  });
-}
+  }
 
   if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
     const wb = XLSX.utils.book_new();
