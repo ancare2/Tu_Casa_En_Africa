@@ -260,6 +260,7 @@
   </table>
 </div>
 
+<script src="https://unpkg.com/tabletop@1.6.0/tabletop.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   // Variables globales
@@ -703,75 +704,52 @@
       `;
       document.body.appendChild(modal);
 
-      let datosExcel = [];
-
-      // Cargar librería SheetJS (xlsx)
-      if (!window.XLSX) {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js';
-        script.onload = () => console.log('SheetJS cargado');
-        document.head.appendChild(script);
-      }
-
-      // Leer archivo Excel al seleccionarlo
-      document.getElementById('fileExcel').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          const data = new Uint8Array(evt.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          datosExcel = XLSX.utils.sheet_to_json(worksheet);
-          alert(`Archivo cargado con ${datosExcel.length} filas.`);
-        };
-        reader.readAsArrayBuffer(file);
+    let datosExcel = [];
+    
+    function cargarDatosDesdeGoogleSheet() {
+      return new Promise((resolve, reject) => {
+        Tabletop.init({
+          key: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pubhtml',
+          simpleSheet: true,
+          callback: function (data) {
+            datosExcel = data;
+            console.log("✅ Datos cargados:", datosExcel);
+            resolve(data);
+          },
+          error: function (error) {
+            console.error("❌ Error al cargar Google Sheet", error);
+            reject(error);
+          }
+        });
       });
+    }
+
 
       // Enviar consulta
       document.getElementById('btnEnviarIA').onclick = async () => {
         const pregunta = document.getElementById('preguntaIA').value.trim();
         if (!pregunta) return alert('Escribe una pregunta');
-
+      
         document.getElementById('respuestaIA').textContent = '⏳ Consultando...';
-
-        // Datos a usar: si hay datos Excel, usar esos, si no, usar tablaBody (tu código original)
-        let datosParaIA;
-        if (datosExcel.length > 0) {
-          datosParaIA = datosExcel;
-        } else {
-          datosParaIA = Array.from(tablaBody.children).map(tr => {
-            const obj = {};
-            campos.forEach(c => {
-              const celda = tr.querySelector(`[data-field="${c}"]`);
-              obj[c] = celda ? celda.textContent.trim() : '';
-            });
-            return obj;
-          });
-        }
-
+      
         try {
-          const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
+          await cargarDatosDesdeGoogleSheet();
+          const datosParaIA = datosExcel;
+      
+          const resp = await fetch('https://TU-PROYECTO.railway.app/api/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
             })
           });
+      
           const json = await resp.json();
-          document.getElementById('respuestaIA').textContent = json.text || 'No se recibió respuesta.';
+          document.getElementById('respuestaIA').textContent = json.text || '⚠️ No se recibió respuesta.';
         } catch (e) {
           document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
         }
       };
-
-      document.getElementById('cerrarIA').onclick = () => {
-        modal.remove();
-      };
-    }
-  }
 
 
 
