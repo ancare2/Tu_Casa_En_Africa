@@ -375,93 +375,96 @@
     });
   });
 
-  try {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.lang = 'es-ES';
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    recognition.continuous = true; // 👈 Permite grabar sin parar por pausas
-  
-    recognition.onstart = () => {
-      isRecording = true;
-      if (startBtn) startBtn.disabled = true;
-      if (stopBtn) stopBtn.disabled = false;
-    };
-  
-    recognition.onresult = (event) => {
-      let interimTranscript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        let transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          textoCompleto += transcript.trim() + " ";
-        } else {
-          interimTranscript += transcript;
-        }
+try {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'es-ES';
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+  recognition.continuous = true; // 👈 Permite grabar sin parar por pausas
+
+  recognition.onstart = () => {
+    isRecording = true;
+    if (startBtn) startBtn.disabled = true;
+    if (stopBtn) stopBtn.disabled = false;
+  };
+
+  recognition.onresult = (event) => {
+    let interimTranscript = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      let transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        textoCompleto += transcript.trim() + " ";
+      } else {
+        interimTranscript += transcript;
       }
-      if (transcripcionDiv) transcripcionDiv.textContent = textoCompleto + interimTranscript;
-    };
-    
-    recognition.onerror = (event) => {
-      alert("Error en reconocimiento de voz: " + event.error);
-      isRecording = false;
+    }
+    if (transcripcionDiv) transcripcionDiv.textContent = textoCompleto + interimTranscript;
+  };
+
+  recognition.onerror = (event) => {
+    alert("Error en reconocimiento de voz: " + event.error);
+    isRecording = false;
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = true;
+  };
+
+  recognition.onend = () => {
+    if (isRecording) {
+      // 👇 Reiniciar automáticamente si todavía no se ha pulsado "Detener"
+      recognition.start();
+    } else {
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
-    };
+    }
+  };
 
-    recognition.onend = () => {
-      if (isRecording) {
-        // 👇 Reiniciar automáticamente si todavía no se ha pulsado "Detener"
-        recognition.start();
-      } else {
-        if (startBtn) startBtn.disabled = false;
-        if (stopBtn) stopBtn.disabled = true;
-      }
-    };
+} catch (e) {
+  alert("No se soporta reconocimiento de voz en este navegador.");
+  if (startBtn) startBtn.disabled = true;
+  if (stopBtn) stopBtn.disabled = true;
+}
 
-  } catch (e) {
-    alert("No se soporta reconocimiento de voz en este navegador.");
-    if (startBtn) startBtn.disabled = true;
-    if (stopBtn) stopBtn.disabled = true;
+if (startBtn) startBtn.addEventListener('click', () => {
+  if (recognition && !isRecording) {
+    textoCompleto = "";
+    if (transcripcionDiv) transcripcionDiv.textContent = "";
+    isRecording = true; // 👈 Importante para reinicios automáticos
+    recognition.start();
+  }
+});
+
+if (stopBtn) stopBtn.addEventListener('click', () => {
+  if (recognition && isRecording) {
+    isRecording = false; // 👈 Esto evita que se reinicie solo
+    recognition.stop();
+  }
+});
+
+if (checkTranscripcionBtn) checkTranscripcionBtn.addEventListener('click', () => {
+  if (!campoSeleccionado) {
+    alert('Selecciona un campo primero');
+    return;
   }
 
-  if (startBtn) startBtn.addEventListener('click', () => {
-    if (recognition && !isRecording) {
-      textoCompleto = "";
-      if (transcripcionDiv) transcripcionDiv.textContent = "";
-      isRecording = true; // 👈 Importante para reinicios automáticos
-      recognition.start();
-    }
-  });
+  // Usar el texto visible que puede incluir interino
+  const textoVisible = transcripcionDiv.textContent.trim();
 
-  if (stopBtn) stopBtn.addEventListener('click', () => {
-    if (recognition && isRecording) {
-      recognition.stop();
-    }
-  });
+  if (!textoVisible) {
+    alert('No hay texto para guardar');
+    return;
+  }
 
-  if (checkTranscripcionBtn) checkTranscripcionBtn.addEventListener('click', () => {
-    if (!campoSeleccionado) {
-        alert('Selecciona un campo primero');
-        return;
-      }
-      // Usar el texto visible que puede incluir interino
-      const textoVisible = transcripcionDiv.textContent.trim();
+  let valorFinal = textoVisible;
+  if (campoSeleccionado === 'edad') {
+    valorFinal = convertirSiEsNumero(valorFinal);
+  }
+  agregarOActualizarRegistro(campoSeleccionado, valorFinal);
 
-      if (!textoVisible) {
-        alert('No hay texto para guardar');
-        return;
-      }
+  textoCompleto = "";
+  if (transcripcionDiv) transcripcionDiv.textContent = "";
+});
 
-      let valorFinal = textoVisible;
-      if (campoSeleccionado === 'edad') {
-        valorFinal = convertirSiEsNumero(valorFinal);
-      }
-      agregarOActualizarRegistro(campoSeleccionado, valorFinal);
-
-      textoCompleto = "";
-      if (transcripcionDiv) transcripcionDiv.textContent = "";
-    });
 
   if (wrongTranscripcionBtn) wrongTranscripcionBtn.addEventListener('click', () => {
     if (!textoCompleto.trim()) {
@@ -820,3 +823,4 @@
 
   actualizarEstadoBotones();
 </script>
+
