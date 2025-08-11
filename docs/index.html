@@ -717,11 +717,12 @@ if (rango !== 'todos') {
 
 
   try {
-      const prompt = `Genera un resumen general y narrativo estrictamente basado en la información contenida en estos registros. 
-      Comienza con una breve introducción clara y directa sobre el conjunto de datos, y luego desarrolla el contenido incluyendo observaciones, motivos, diagnósticos y seguimientos de forma concreta y conectada. 
-      Evita enumerar pacientes o usar listas o encabezados; el texto debe ser cohesivo y fluido, pero siempre centrado solo en la información dada. 
-      No agregues ni inventes información fuera de los datos proporcionados. 
-      Sé claro, preciso y evita divagaciones o explicaciones innecesarias. 
+      const prompt = `Genera un resumen general, claro y narrativo basado exclusivamente en la información contenida en estos registros médicos. 
+      Comienza con una introducción atractiva y amplia sobre el conjunto de datos en general, sin mencionar pacientes o casos específicos. 
+      Luego desarrolla el resumen incluyendo observaciones, motivos, diagnósticos y seguimientos de forma integrada y coherente, evitando dividirlo en secciones o listas. 
+      No relates caso por caso, ni nombres ni detalles individuales. El texto debe ser fluido, directo y profesional. 
+      No inventes ni añadas información que no esté presente en los registros. 
+      Limita la extensión para que sea completo pero no excesivamente largo. 
       Datos: ${JSON.stringify(datosExcel)}`;
       console.log('Enviando prompt a la API:', prompt);
 
@@ -1102,6 +1103,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
