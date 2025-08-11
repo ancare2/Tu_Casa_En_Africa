@@ -7,15 +7,11 @@ import fetch from 'node-fetch';
 dotenv.config();
 
 const app = express();
-
-// Configuración CORS para aceptar solicitudes desde localhost:5500
 app.use(cors());
 app.use(bodyParser.json());
 
-
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-// Ruta POST para generar texto
 app.post('/api/generate', async (req, res) => {
   const { prompt } = req.body;
 
@@ -64,5 +60,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor escuchando en http://localhost:${PORT}`);
 });
+
 
 
