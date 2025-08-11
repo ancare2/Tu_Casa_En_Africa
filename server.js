@@ -7,19 +7,8 @@ import fetch from 'node-fetch';
 dotenv.config();
 
 const app = express();
-
-// Configura CORS para permitir solo desde tu frontend
-app.use(cors({
-  origin: 'https://ancare2.github.io',  // Reemplaza con el dominio de tu frontend
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-
+app.use(cors());
 app.use(bodyParser.json());
-
-// Responde a las peticiones OPTIONS para CORS (preflight)
-app.options('*', cors());
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
