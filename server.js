@@ -1,8 +1,8 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const bodyParser = require('body-parser');
-const fetch = require('node-fetch');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import bodyParser from 'body-parser';
+import fetch from 'node-fetch';
 
 dotenv.config();
 
@@ -17,6 +17,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json()); // body parser para JSON
+app.use(bodyParser.json());
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
