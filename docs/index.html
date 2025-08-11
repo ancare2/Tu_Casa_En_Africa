@@ -205,6 +205,7 @@
     <button id="guardarRegistro">Guardar Registro</button>
     <button id="descargarExcel">📥 Descargar Excel</button>
     <button id="consultarIA" style="background-color: #16a085; color: white; padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">🤖 Consultar IA</button>
+    <button id="generarDiario" style="background-color: #9aad44; color: white; padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">📝 Generar diario de campo</button>
   </div>
 
   <p><strong>Campo seleccionado:</strong> <span id="campoSeleccionado">Ninguno</span></p>
@@ -299,6 +300,7 @@
   const editFieldLabel = document.getElementById('editFieldLabel');
   const siguientePacienteBtn = document.getElementById('siguientePaciente');
   const guardarTodoBtn = document.getElementById('guardarTodo');
+  const generarDiarioBtn = document.getElementById('generarDiario');
 
   const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfglAdf-IhYnrfNNLYpkKz93eF9F9d080m7u8gjCepP2lbkxg/formResponse';
   const FORM_FIELD_MAPPING = {
@@ -464,6 +466,290 @@
     }
     abrirModalEdicion(campoSeleccionado, textoCompleto.trim(), true);
   });
+
+
+let datosExcel = []; // variable global donde se guardan los datos
+
+async function cargarDatosDesdeGoogleSheet() {
+  const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=csv';
+
+  try {
+    const response = await fetch(urlCSV);
+    const csvText = await response.text();
+    const workbook = XLSX.read(csvText, { type: 'string' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    datosExcel = XLSX.utils.sheet_to_json(worksheet);
+    alert(`Datos cargados automáticamente (${datosExcel.length} registros).`);
+  } catch (err) {
+    console.error('Error al cargar desde Google Sheets:', err);
+    alert('❌ Error al cargar los datos desde Google Sheets.');
+  }
+}
+
+window.addEventListener('load', async () => {
+  await cargarDatosDesdeGoogleSheet();
+});
+
+function pedirRangoFechas() {
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '10000';
+
+    modal.innerHTML = `
+      <div style="background: white; padding: 20px; border-radius: 8px; width: 350px; max-width: 90%;">
+        <h3>Filtrar registros por fecha</h3>
+        <label>Desde (dd/mm/yyyy): <input type="text" id="fechaDesde" placeholder="Ej. 01/08/2025"></label><br><br>
+        <label>Hasta (dd/mm/yyyy): <input type="text" id="fechaHasta" placeholder="Ej. 11/08/2025"></label><br><br>
+        <button id="btnTodos" style="margin-right: 10px;">Usar todos los registros</button>
+        <button id="btnFiltrar">Filtrar</button>
+        <button id="btnCancelar" style="margin-left: 10px; background: #ccc;">Cancelar</button>
+        <p id="errorFecha" style="color:red; margin-top:10px; display:none;"></p>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const btnTodos = modal.querySelector('#btnTodos');
+    const btnFiltrar = modal.querySelector('#btnFiltrar');
+    const btnCancelar = modal.querySelector('#btnCancelar');
+    const errorFecha = modal.querySelector('#errorFecha');
+
+    function limpiar() {
+      modal.remove();
+    }
+
+    btnCancelar.onclick = () => {
+      limpiar();
+      resolve(null);  // Cancela
+    };
+
+    btnTodos.onclick = () => {
+      limpiar();
+      resolve('todos');
+    };
+
+    btnFiltrar.onclick = () => {
+      const desdeStr = modal.querySelector('#fechaDesde').value.trim();
+      const hastaStr = modal.querySelector('#fechaHasta').value.trim();
+
+      if (!desdeStr || !hastaStr) {
+        errorFecha.textContent = 'Por favor ingresa ambas fechas.';
+        errorFecha.style.display = 'block';
+        return;
+      }
+
+      // Validar formato dd/mm/yyyy con regex básica
+      const formatoValido = /^\d{2}\/\d{2}\/\d{4}$/;
+      if (!formatoValido.test(desdeStr) || !formatoValido.test(hastaStr)) {
+        errorFecha.textContent = 'Formato de fecha inválido, usa dd/mm/yyyy.';
+        errorFecha.style.display = 'block';
+        return;
+      }
+
+      // Extraer día, mes, año y usar padStart para asegurarse de que tengan 2 dígitos
+      let [ddDesde, mmDesde, yyyyDesde] = desdeStr.split('/');
+      let [ddHasta, mmHasta, yyyyHasta] = hastaStr.split('/');
+
+      ddDesde = ddDesde.padStart(2, '0');
+      mmDesde = mmDesde.padStart(2, '0');
+      ddHasta = ddHasta.padStart(2, '0');
+      mmHasta = mmHasta.padStart(2, '0');
+
+      // Crear objetos Date con formato ISO correcto
+      const fechaDesde = new Date(`${yyyyDesde}-${mmDesde}-${ddDesde}T00:00:00`);
+      const fechaHasta = new Date(`${yyyyHasta}-${mmHasta}-${ddHasta}T23:59:59`);
+
+      // Validar fechas válidas
+      if (isNaN(fechaDesde.getTime()) || isNaN(fechaHasta.getTime())) {
+        errorFecha.textContent = 'Fechas inválidas.';
+        errorFecha.style.display = 'block';
+        return;
+      }
+
+      if (fechaDesde > fechaHasta) {
+        errorFecha.textContent = '"Desde" no puede ser mayor que "Hasta".';
+        errorFecha.style.display = 'block';
+        return;
+      }
+
+      limpiar();
+      resolve({ desde: fechaDesde, hasta: fechaHasta });
+    };
+  });
+}
+
+
+if (generarDiarioBtn) {
+  generarDiarioBtn.addEventListener('click', async () => {
+    if (!datosExcel || datosExcel.length === 0) {
+      alert('No hay registros cargados para generar el diario. Por favor, carga los datos primero.');
+      return;
+    }
+
+    const rango = await pedirRangoFechas();
+    if (rango === null) {
+      // Usuario canceló
+      return;
+    }
+
+    let datosFiltrados = datosExcel;
+
+
+      
+if (rango !== 'todos') {
+  datosFiltrados = datosExcel.filter(registro => {
+    const marcaTemporal = registro['Marca temporal'];
+
+    if (typeof marcaTemporal !== 'string' || !marcaTemporal.trim()) {
+      console.log('Marca temporal inválida o vacía:', marcaTemporal);
+      return false;
+    }
+
+    const [fechaStr] = marcaTemporal.split(' ');
+    const [dd, mm, yyyy] = fechaStr.split('/');
+
+    if (!dd || !mm || !yyyy) {
+      console.log('Fecha mal formada:', fechaStr);
+      return false;
+    }
+
+    const fechaRegistro = new Date(`${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}T00:00:00`);
+
+    if (isNaN(fechaRegistro.getTime())) {
+      console.log('FechaRegistro inválida:', fechaRegistro);
+      return false;
+    }
+
+    const fechaDesde = new Date(rango.desde);
+    fechaDesde.setHours(0, 0, 0, 0);
+    const fechaHasta = new Date(rango.hasta);
+    fechaHasta.setHours(23, 59, 59, 999);
+
+    console.log('Fecha registro:', fechaRegistro);
+    console.log('Rango desde:', fechaDesde);
+    console.log('Rango hasta:', fechaHasta);
+
+    const dentroRango = fechaRegistro >= fechaDesde && fechaRegistro <= fechaHasta;
+    console.log('¿Dentro de rango?', dentroRango);
+
+    return dentroRango;
+  });
+}
+
+
+    // Crear modal para mostrar progreso y resultado
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '1000';
+
+    modal.innerHTML = `
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 600px; max-height: 80%; overflow-y: auto;">
+      <h2>📝 Diario de campo</h2>
+      <div id="textoDiario" style="white-space: pre-wrap; margin-top: 15px;">⏳ Generando...</div>
+      <textarea id="editorDiario" style="display:none; width: 100%; height: 200px; margin-top: 10px;"></textarea>
+      <div style="margin-top: 15px;">
+        <button id="btnEditar" style="margin-right: 10px;">Editar diario</button>
+        <button id="btnDescargar" style="margin-right: 10px;">Descargar TXT</button>
+        <button id="btnCancelar" style="background: #ccc;">Cancelar</button>
+      </div>
+    </div>
+  `;
+
+    document.body.appendChild(modal);
+
+
+    const textoDiario = modal.querySelector('#textoDiario');
+    const editorDiario = modal.querySelector('#editorDiario');
+    const btnEditar = modal.querySelector('#btnEditar');
+    const btnDescargar = modal.querySelector('#btnDescargar');
+    const btnCancelar = modal.querySelector('#btnCancelar');
+
+    btnCancelar.onclick = () => {
+      modal.remove();
+    };
+
+    btnEditar.onclick = () => {
+      if (editorDiario.style.display === 'none') {
+        // Mostrar textarea con contenido para editar
+        editorDiario.value = textoDiario.textContent;
+        editorDiario.style.display = 'block';
+        textoDiario.style.display = 'none';
+        btnEditar.textContent = 'Guardar cambios';
+      } else {
+        // Guardar cambios
+        textoDiario.textContent = editorDiario.value;
+        editorDiario.style.display = 'none';
+        textoDiario.style.display = 'block';
+        btnEditar.textContent = 'Editar diario';
+      }
+    };
+
+    btnDescargar.onclick = () => {
+      const contenido = editorDiario.style.display === 'block' ? editorDiario.value : textoDiario.textContent;
+      const blob = new Blob([contenido], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'diario_de_campo.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+
+  try {
+      const prompt = `Genera un resumen general, breve y narrativo con la información contenida en estos registros. 
+      Solo incluye un resumen conjunto con las observaciones, motivos, diagnósticos y seguimientos de forma clara y concisa. 
+      No enumeres pacientes ni uses formato tipo lista o encabezados, solo un texto fluido y coherente.
+      Datos: ${JSON.stringify(datosExcel)}`;
+      console.log('Enviando prompt a la API:', prompt);
+
+      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Error en la respuesta: ${resp.status} ${resp.statusText}`);
+      }
+
+      const json = await resp.json();
+
+      console.log('Respuesta de la API:', json);
+
+      document.getElementById('textoDiario').textContent = json.text || 'No se recibió respuesta de la IA.';
+    } catch (e) {
+      console.error('Error generando el diario:', e);
+      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario.';
+    }
+  });
+
+} else {
+  console.error('No se encontró el botón generarDiarioBtn');
+}
+
+
+
 
   function agregarOActualizarRegistro(campo, valor) {
     console.log('Agregar o actualizar campo:', campo, 'valor:', valor);
@@ -814,4 +1100,6 @@
 
   actualizarEstadoBotones();
 </script>
+
+
 
