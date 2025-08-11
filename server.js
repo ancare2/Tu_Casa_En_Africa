@@ -8,20 +8,15 @@ dotenv.config();
 
 const app = express();
 
-// Middleware para logs básicos y CORS explícito
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from origin: ${req.headers.origin}`);
-  res.header('Access-Control-Allow-Origin', '*'); // permitir cualquier origen (o especifica tu dominio)
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  if (req.method === 'OPTIONS') {
-    console.log('Responding to OPTIONS preflight');
-    return res.sendStatus(204);
-  }
-  next();
-});
+// Configuración CORS oficial para aceptar cualquier origen (ajusta origin si quieres restringir)
+const corsOptions = {
+  origin: '*', // o 'https://ancare2.github.io' si quieres restringir solo a ese dominio
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 
-app.use(express.json());
+app.use(cors(corsOptions));
+app.use(express.json()); // body parser para JSON
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
@@ -31,7 +26,7 @@ if (!OPENROUTER_API_KEY) {
 }
 
 app.post('/api/generate', async (req, res) => {
-  console.log('Recibida solicitud /api/generate');
+  console.log(`[${new Date().toISOString()}] Recibida solicitud POST /api/generate`);
 
   const { prompt } = req.body;
 
@@ -88,9 +83,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor escuchando en http://localhost:${PORT}`);
 });
-
-
-
 
 
 
