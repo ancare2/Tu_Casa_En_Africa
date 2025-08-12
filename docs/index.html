@@ -717,13 +717,14 @@ if (rango !== 'todos') {
 
 
   try {
-     const prompt = `Genera un texto en formato de diario de campo de voluntariado en salud, utilizando únicamente la información real contenida en estos registros médicos. 
-     El texto debe tener exactamente dos párrafos:
-     1) Primer párrafo: introducción atractiva y descriptiva que incluya la información general disponible (como fecha, pueblo, nombre de la actividad, número total de pacientes atendidos) y presente el contexto global de la actividad, manteniendo un tono narrativo propio de un diario de campo.
-     2) Segundo párrafo: integrar de forma fluida la descripción de actividades realizadas, observaciones, análisis y propuestas de mejora, basándote solo en los datos reales disponibles. 
-     No inventes ni añadas información que no esté presente en los registros. 
-     Evita listas, secciones o enumeraciones; el texto debe ser cohesivo y profesional, breve pero completo.
-     Datos: ${JSON.stringify(datosExcel)}`;
+      const prompt = `Genera un texto en formato de diario de campo de voluntariado en salud, utilizando únicamente los datos reales de estos registros médicos, sin inventar ni suponer información adicional.
+      La fecha debe obtenerse exclusivamente de la columna "Marca temporal" de los registros, extrayendo solo el día, mes y año (sin incluir la hora). 
+      Debe contener exactamente dos párrafos:
+      1) Primer párrafo: presentación breve del contexto y la información general disponible (fecha, lugar, nombre de la actividad o institución) extraída únicamente de los datos, sin adornos innecesarios.
+      2) Segundo párrafo: integrar de forma concisa las actividades realizadas, observaciones, diagnósticos y tratamientos, junto con un breve análisis y propuestas de mejora, manteniendo un tono profesional y objetivo.
+      No uses listas, enumeraciones ni casos individuales, y limita el texto para que sea claro, breve y directo.
+      Datos: ${JSON.stringify(datosExcel)}`;
+      
       console.log('Enviando prompt a la API:', prompt);
 
       const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
@@ -1103,6 +1104,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
