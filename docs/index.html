@@ -717,12 +717,13 @@ if (rango !== 'todos') {
 
 
   try {
-      const prompt = `El objetivo general es realizar un resumen breve y conciso con los registros proporcionados. **El resumen se basará en únicamente en dos párrafos**:
-      - En el primer párrafo, escribe una introducción atractiva que presente el conjunto de datos de forma general. 
-      - En un segundo párrafo, desarrolla un breve resumen incluyendo observaciones, motivos, diagnósticos y seguimientos de forma integrada y coherente, sin dividirlo en secciones o listas. No menciones casos específicos, nombres ni detalles individuales. 
-      No inventes ni añadas información que no esté presente en los registros. 
-      Limita la extensión. 
-      Datos: ${JSON.stringify(datosExcel)}`;
+     const prompt = `Genera un texto en formato de diario de campo de voluntariado en salud, utilizando únicamente la información real contenida en estos registros médicos. 
+     El texto debe tener exactamente dos párrafos:
+     1) Primer párrafo: introducción atractiva y descriptiva que incluya la información general disponible (como fecha, pueblo, nombre de la actividad, número total de pacientes atendidos) y presente el contexto global de la actividad, manteniendo un tono narrativo propio de un diario de campo.
+     2) Segundo párrafo: integrar de forma fluida la descripción de actividades realizadas, observaciones, análisis y propuestas de mejora, basándote solo en los datos reales disponibles. 
+     No inventes ni añadas información que no esté presente en los registros. 
+     Evita listas, secciones o enumeraciones; el texto debe ser cohesivo y profesional, breve pero completo.
+     Datos: ${JSON.stringify(datosExcel)}`;
       console.log('Enviando prompt a la API:', prompt);
 
       const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
@@ -1102,6 +1103,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
