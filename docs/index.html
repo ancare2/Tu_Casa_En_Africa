@@ -860,13 +860,25 @@ if (rango !== 'todos') {
 
 
   try {
-      const prompt = `Genera un resumen general, claro y breve basado exclusivamente en la información contenida en estos registros médicos. 
-      No menciones casos específicos, nombres ni detalles individuales. El texto debe ser fluido, directo y profesional. 
-      - En el primer párrafo, escribe una introducción atractiva que presente el conjunto de datos de forma general. 
-      - En un segundo párrafo, desarrolla un breve resumen incluyendo observaciones, motivos, diagnósticos y seguimientos de forma integrada y coherente, sin dividirlo en secciones o listas. No menciones casos específicos, nombres ni detalles individuales. 
-      No inventes ni añadas información que no esté presente en los registros. 
-      Limita la extensión para que sea completo pero conciso. 
-      Datos: ${JSON.stringify(datosExcel)}`;
+      const prompt = `
+      Analiza exclusivamente la información contenida en los siguientes registros médicos (en formato JSON).
+      
+      Objetivo:
+      Generar un resumen general breve y claro del conjunto de datos.
+      
+      Instrucciones estrictas:
+      1. No mencionar nombres, casos concretos ni detalles identificables.
+      2. No inventar información ni añadir datos externos.
+      3. El texto debe ser fluido, profesional y redactado en prosa, no en listas.
+      4. Extensión: breve pero suficiente para abarcar las observaciones principales.
+      
+      Estructura esperada:
+      - Párrafo 1: Introducción breve pero atractiva que presente el conjunto de datos de forma general.
+      - Párrafo 2: Resumen breve integrado que combine observaciones, motivos de consulta, diagnósticos y seguimientos de forma coherente, sin dividir en secciones.
+      
+      Datos para analizar:
+      ${JSON.stringify(datosExcel)}
+      `;
       console.log('Enviando prompt a la API:', prompt);
 
       const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
@@ -1179,7 +1191,6 @@ if (rango !== 'todos') {
 
   document.body.appendChild(modal);
 
-  // Cargar automáticamente los datos desde Google Sheets como CSV
   async function cargarDatosDesdeGoogleSheet() {
     const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=csv';
 
@@ -1246,6 +1257,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
