@@ -715,39 +715,38 @@ if (rango !== 'todos') {
       URL.revokeObjectURL(url);
     };
 
-
-     function excelDateToJSDate(serial) {
-      // Excel cuenta días desde 1900-01-01
-      const utc_days = Math.floor(serial - 25569); 
-      const utc_value = utc_days * 86400; 
-      const date_info = new Date(utc_value * 1000); 
-    
-      // Extraemos día, mes, año con dos dígitos
-      const day = String(date_info.getUTCDate()).padStart(2, '0');
-      const month = String(date_info.getUTCMonth() + 1).padStart(2, '0');
-      const year = date_info.getUTCFullYear();
-    
-      return `${day}/${month}/${year}`;
-    }
-    
-    // Ejemplo con tu primer registro
-    const fecha = excelDateToJSDate(datosExcel[0]["Marca temporal"]);
-    const lugar = datosExcel[0]["pueblo"];
-    const totalPacientes = datosExcel.length;
-    
-    try {
-      const prompt = `Genera un texto en formato de diario de campo de voluntariado en salud usando únicamente la información contenida en estos registros médicos.
-      - Debe contener exactamente dos párrafos.
-      - Primer párrafo: indicar la fecha (${fecha}), lugar (${lugar}), y el número total de pacientes atendidos (${totalPacientes}). No incluir descripciones ambientales ni adornos.
-      - Segundo párrafo: resumen breve y objetivo de las actividades realizadas, observaciones, diagnósticos, tratamientos y propuestas de mejora, sin enumerar casos individuales ni mencionar nombres.
-      - No inventar datos ni añadir información que no esté en los registros.
-      - Usar un tono profesional, claro y directo.
-      Datos: ${JSON.stringify(datosExcel)}`;
-    
-      console.log('Enviando prompt a la API:', prompt);
-    } catch (error) {
-      console.error(error);
-    }
+  function excelDateToJSDate(serial) {
+    // Excel cuenta días desde 1900-01-01
+    const utc_days = Math.floor(serial - 25569); 
+    const utc_value = utc_days * 86400; 
+    const date_info = new Date(utc_value * 1000); 
+  
+    // Extraemos día, mes, año con dos dígitos
+    const day = String(date_info.getUTCDate()).padStart(2, '0');
+    const month = String(date_info.getUTCMonth() + 1).padStart(2, '0');
+    const year = date_info.getUTCFullYear();
+  
+    return `${day}/${month}/${year}`;
+  }
+  
+  // Ejemplo con tu primer registro
+  const fecha = excelDateToJSDate(datosExcel[0]["Marca temporal"]);
+  const lugar = datosExcel[0]["pueblo"];
+  const totalPacientes = datosExcel.length;
+  
+  try {
+    const prompt = `Genera un texto en formato de diario de campo de voluntariado en salud usando únicamente la información contenida en estos registros médicos.
+    - Debe contener exactamente dos párrafos.
+    - Primer párrafo: indicar la fecha (${fecha}), lugar (${lugar}), y el número total de pacientes atendidos (${totalPacientes}). No incluir descripciones ambientales ni adornos.
+    - Segundo párrafo: resumen breve y objetivo de las actividades realizadas, observaciones, diagnósticos, tratamientos y propuestas de mejora, sin enumerar casos individuales ni mencionar nombres.
+    - No inventar datos ni añadir información que no esté en los registros.
+    - Usar un tono profesional, claro y directo.
+    Datos: ${JSON.stringify(datosExcel)}`;
+  
+    console.log('Enviando prompt a la API:', prompt);
+  } catch (error) {
+    console.error(error);
+  }
 
       const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
         method: 'POST',
@@ -1126,6 +1125,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
