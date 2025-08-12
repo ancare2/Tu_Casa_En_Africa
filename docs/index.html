@@ -480,7 +480,6 @@ async function cargarDatosDesdeGoogleSheet() {
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     datosExcel = XLSX.utils.sheet_to_json(worksheet);
-    alert(`Datos cargados automáticamente (${datosExcel.length} registros).`);
   } catch (err) {
     console.error('Error al cargar desde Google Sheets:', err);
     alert('❌ Error al cargar los datos desde Google Sheets.');
@@ -1201,7 +1200,6 @@ if (rango !== 'todos') {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       datosExcel = XLSX.utils.sheet_to_json(worksheet);
-      alert(`Datos cargados automáticamente (${datosExcel.length} registros).`);
     } catch (err) {
       console.error('Error al cargar desde Google Sheets:', err);
       alert('❌ Error al cargar los datos desde Google Sheets.');
@@ -1257,6 +1255,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
