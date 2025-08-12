@@ -714,27 +714,25 @@ if (rango !== 'todos') {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     };
-
+    
     try {
-      const prompt = `El objetivo general es: Realizar un breve resumen en formato diario de campo de un voluntariado de salud en África. La organización se llama 'Tu Casa en África' y esta en Abéné. Usa únicamente la información contenida en estos registros médicos.
-      Este resumen debe contener exactamente dos párrafos con la siguiente estructura:
-      - Primer párrafo: indicar la fecha (se encuentra en la columna Marca temporal de los registros), pueblos visitados, y el número total de pacientes atendidos. No incluir descripciones ambientales ni adornos.
-      - Segundo párrafo: **resumen breve** y objetivo de los casos atentidos, observaciones, diagnósticos, tratamientos y propuestas de mejora, sin enumerar casos individuales ni mencionar nombres.
-      **No inventar datos ni añadir información que no esté en los registros.**
-      **Usar un tono profesional, claro y directo.**
-      **Todo el texto debe ser objetivo.**
-      Datos: ${JSON.stringify(datosExcel)}`;
+      const prompt = `El objetivo general es: Realizar un breve resumen en formato diario de campo de un voluntariado de salud en África. La organización se llama 'Tu Casa en África' y está en Abéné. Usa únicamente la información contenida en estos registros médicos.
+    Este resumen debe contener exactamente dos párrafos con la siguiente estructura:
+    - Primer párrafo: indicar la fecha (se encuentra en la columna Marca temporal de los registros), pueblos visitados y el número total de pacientes atendidos. No incluir descripciones ambientales ni adornos.
+    - Segundo párrafo: **resumen breve** y objetivo de los casos atendidos, observaciones, diagnósticos, tratamientos y propuestas de mejora, sin enumerar casos individuales ni mencionar nombres.
+    **No inventar datos ni añadir información que no esté en los registros.**
+    **Usar un tono profesional, claro y directo.**
+    **Todo el texto debe ser objetivo.**
+    Datos: ${JSON.stringify(datosExcel)}`;
     
       console.log('Enviando prompt a la API:', prompt);
-    } catch (error) {
-      console.error(error);
-    }
-
+    
       const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
       });
+    
 
       if (!resp.ok) {
         throw new Error(`Error en la respuesta: ${resp.status} ${resp.statusText}`);
@@ -1107,6 +1105,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
