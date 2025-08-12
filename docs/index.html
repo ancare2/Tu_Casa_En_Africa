@@ -717,12 +717,13 @@ if (rango !== 'todos') {
 
 
   try {
-      const prompt = `Genera un texto en formato de diario de campo de voluntariado en salud, utilizando únicamente los datos reales de estos registros médicos, sin inventar ni suponer información adicional.
-      La fecha debe obtenerse exclusivamente de la columna "Marca temporal" de los registros, extrayendo solo el día, mes y año (sin incluir la hora). 
-      Debe contener exactamente dos párrafos:
-      1) Primer párrafo: presentación breve del contexto y la información general disponible (fecha, lugar, nombre de la actividad o institución) extraída únicamente de los datos, sin adornos innecesarios.
-      2) Segundo párrafo: integrar de forma concisa las actividades realizadas, observaciones, diagnósticos y tratamientos, junto con un breve análisis y propuestas de mejora, manteniendo un tono profesional y objetivo.
-      No uses listas, enumeraciones ni casos individuales, y limita el texto para que sea claro, breve y directo.
+      const prompt = `Genera un texto en formato de diario de campo de voluntariado en salud, utilizando únicamente la información literal contenida en estos registros médicos, sin parafrasear ni añadir descripciones o contexto extra.
+      La fecha debe obtenerse exclusivamente de la columna "Marca temporal", mostrando solo día/mes/año (sin la hora). 
+      El texto debe contener exactamente dos párrafos:
+      1) Primer párrafo: presentación breve del contexto e información general disponible (fecha, lugar, nombre de la actividad o institución), usando únicamente los datos reales. Sin parafrasear ni adornar el texto. Quiero un texto objetivo.
+      2) Segundo párrafo: resumen conciso de las actividades realizadas, observaciones, diagnósticos, tratamientos y propuestas de mejora, manteniendo un tono profesional y objetivo.
+      No incluir historias individuales, nombres de pacientes ni adornos narrativos. 
+      Limita el texto a lo esencial para que sea claro, breve y directo.
       Datos: ${JSON.stringify(datosExcel)}`;
       
       console.log('Enviando prompt a la API:', prompt);
@@ -1104,6 +1105,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
