@@ -202,7 +202,8 @@
   <div>
     <button id="startBtn" disabled>Empezar</button>
     <button id="stopBtn" disabled>Detener</button>
-    <button id="guardarRegistro">Guardar Registro</button>
+    <button id="siguientePaciente" style="background:#d49ed4; color:white; padding:10px 16px; border:none; border-radius:5px;"> Siguiente paciente</button>
+    <button id="guardarRegistro">Guardar Registros</button>
     <button id="descargarExcel">📥 Descargar Excel</button>
     <button id="consultarIA" style="background-color: #16a085; color: white; padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">🤖 Consultar IA</button>
     <button id="generarDiario" style="background-color: #9aad44; color: white; padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">📝 Generar diario de campo</button>
@@ -911,7 +912,30 @@ if (rango !== 'todos') {
 
   function agregarOActualizarRegistro(campo, valor) {
     console.log('Agregar o actualizar campo:', campo, 'valor:', valor);
-    if (!filaActual) {
+  
+      // Si no hay fila activa, crear una nueva
+      if (!filaActual) {
+        filaActual = document.createElement('tr');
+        filaActual.classList.add('borrable');
+        campos.forEach(c => {
+          const td = document.createElement('td');
+          td.textContent = "";
+          td.dataset.field = c;
+          td.classList.add('editable');
+          filaActual.appendChild(td);
+        });
+        tablaBody.appendChild(filaActual);
+      }
+  
+      // Buscar la celda correspondiente y actualizar
+      const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
+      if (celda) {
+        celda.textContent = valor;
+      }
+    }
+  
+    // Función para crear nueva fila vacía
+    function nuevaFilaPaciente() {
       filaActual = document.createElement('tr');
       filaActual.classList.add('borrable');
       campos.forEach(c => {
@@ -923,50 +947,57 @@ if (rango !== 'todos') {
       });
       tablaBody.appendChild(filaActual);
     }
-    const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
-    if (celda) {
-      celda.textContent = valor;
-    }
-  }
-
+  
+    // Botón "Siguiente paciente"
+    siguientePacienteBtn.addEventListener('click', () => {
+      nuevaFilaPaciente();
+    });
+  
   if (guardarRegistroBtn) guardarRegistroBtn.addEventListener('click', () => {
-    if (!filaActual) {
+    const filas = Array.from(tablaBody.querySelectorAll('tr.borrable'));
+    if (filas.length === 0) {
       alert('No hay datos para guardar');
       return;
     }
-    const nombre = filaActual.querySelector('[data-field="nombre"]').textContent.trim();
-    if (!nombre) {
-      alert('El campo "Nombre y Apellidos" es obligatorio');
-      return;
-    }
-    const formData = new FormData();
-    campos.forEach(campo => {
-      const celda = filaActual.querySelector(`[data-field="${campo}"]`);
-      if (celda && FORM_FIELD_MAPPING[campo]) {
-        formData.append(FORM_FIELD_MAPPING[campo], celda.textContent.trim());
+
+    filas.forEach(fila => {
+      const nombre = fila.querySelector('[data-field="nombre"]').textContent.trim();
+      if (!nombre) {
+        // Saltar filas vacías o incompletas
+        console.warn('Fila sin nombre, se omite');
+        return;
       }
+
+      const formData = new FormData();
+      campos.forEach(campo => {
+        const celda = fila.querySelector(`[data-field="${campo}"]`);
+        if (celda && FORM_FIELD_MAPPING[campo]) {
+          formData.append(FORM_FIELD_MAPPING[campo], celda.textContent.trim());
+        }
+      });
+
+      fetch(FORM_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: formData
+      })
+      .then(() => {
+        console.log('Registro enviado al Google Form:', nombre);
+      })
+      .catch(err => {
+        console.error('Error al enviar al formulario:', err);
+      });
     });
 
-    fetch(FORM_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: formData
-    })
-    .then(() => {
-      alert('Registro guardado y enviado al Google Form');
-    })
-    .catch(err => {
-      console.error('Error al enviar al formulario:', err);
-      alert('Registro local guardado, pero hubo un error al enviar al Google Form');
-    });
-
+    alert('Todos los registros de la tabla han sido procesados');
+    
+    // Limpiar filaActual y selección de campo
     filaActual = null;
     campoSeleccionado = null;
     if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
     actualizarEstadoBotones();
     document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
   });
-
 
 
   if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
@@ -1256,6 +1287,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
