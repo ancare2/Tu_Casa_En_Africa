@@ -863,17 +863,28 @@ if (rango !== 'todos') {
       Analiza exclusivamente la información contenida en los siguientes registros médicos (en formato JSON).
       
       Objetivo:
-      Generar un resumen general breve y claro del conjunto de datos.
+      Generar un resumen general breve y claro del conjunto de datos proporcionados.
       
-      Instrucciones estrictas:
-      1. No mencionar nombres, casos concretos ni detalles identificables.
-      2. No inventar información ni añadir datos externos.
-      3. El texto debe ser fluido, profesional y redactado en prosa, no en listas.
-      4. Extensión: breve pero suficiente para abarcar las observaciones principales.
-      
-      Estructura esperada:
-      - Párrafo 1: Introducción breve pero atractiva que presente el conjunto de datos de forma general.
+      Instrucciones:
+      1. **Excluir nombres propios.**
+      2. **Usar únicamente la información disponible en los registros.**
+      3. Redactar en prosa fluida y profesional, evitando listas.
+      4. Extensión breve pero suficiente para abarcar las observaciones principales.
+
+      **Estructura obligatoria** a seguir:
+      - Párrafo 1: Introducción breve y atractiva que presente el conjunto de datos de forma general, utilizando exclusivamente la información disponible.
       - Párrafo 2: Resumen breve integrado que combine observaciones, motivos de consulta, diagnósticos y seguimientos de forma coherente, sin dividir en secciones.
+      - Párrafo 3: Valoración subjetiva/opinión personal de los registros.
+
+      Ejemplo (con datos inventados):
+
+      14 de agosto de 2025
+      
+      Hoy nos desplazamos al pueblo de Kafountine, una localidad relativamente pequeña. Durante la jornada se atendió a 23 pacientes, en su mayoría adultos mayores, aunque también hubo consultas de personas en la franja de 30 a 50 años. El ambiente fue cordial y la comunidad mostró gran disposición para participar en las revisiones y controles.
+      
+      En términos generales, las consultas se centraron en revisiones de hipertensión y control de diabetes, con algunos casos de afecciones respiratorias leves. También se atendió a una paciente con dolor abdominal persistente que requirió derivación para estudios más específicos. Hubo varios controles de seguimiento con resultados estables, destacando la mejora de un paciente que llevaba meses en tratamiento por insuficiencia cardíaca.
+      
+      La jornada dejó una impresión muy positiva: la comunidad confía en el equipo de salud y valora la continuidad de la atención. El compromiso de las personas por mantener sus tratamientos y asistir a los controles demuestra una conciencia creciente sobre el cuidado preventivo.
       
       Datos para analizar:
       ${JSON.stringify(datosExcel)}
@@ -1255,6 +1266,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
