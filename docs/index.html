@@ -409,9 +409,6 @@
       isRecording = false;
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
-      if (campoSeleccionado && !modoEdicion && !modoBorrado) {
-        recognition.start();
-  }
     };
 
     recognition.onend = () => {
@@ -1290,6 +1287,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
