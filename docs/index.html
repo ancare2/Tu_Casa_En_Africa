@@ -271,6 +271,7 @@
   let filaActual = null;
   let modoEdicion = false;
   let modoBorrado = false;
+  let detenerManual = false;
 
   const campos = ['nombre', 'edad', 'pueblo', 'motivo', 'diagnostico', 'tratamiento', 'seguimiento'];
 
@@ -415,6 +416,10 @@
       isRecording = false;
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
+      if (!detenerManual) {
+        recognition.start();
+        isRecording = true;
+  }
     };
 
   } catch (e) {
@@ -425,6 +430,7 @@
 
   if (startBtn) startBtn.addEventListener('click', () => {
     if (recognition && !isRecording) {
+      detenerManual = false;
       textoCompleto = "";
       if (transcripcionDiv) transcripcionDiv.textContent = "";
       recognition.start();
@@ -433,6 +439,7 @@
 
   if (stopBtn) stopBtn.addEventListener('click', () => {
     if (recognition && isRecording) {
+      detenerManual = true; 
       recognition.stop();
     }
   });
@@ -1287,6 +1294,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
