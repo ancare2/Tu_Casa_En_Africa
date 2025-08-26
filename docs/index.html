@@ -484,6 +484,10 @@ async function cargarDatosDesdeGoogleSheet() {
   try {
     const response = await fetch(urlCSV);
     const csvText = await response.text();
+    const workbook = XLSX.read(csvText, { type: 'string' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    datosExcel = XLSX.utils.sheet_to_json(worksheet);
 
     // Convertir CSV → JSON
     const filas = csvText.trim().split("\n").map(row => row.split(","));
@@ -491,6 +495,7 @@ async function cargarDatosDesdeGoogleSheet() {
     datosExcel = filas.map(fila =>
       Object.fromEntries(fila.map((val, i) => [headers[i], val]))
     );
+    
   } catch (err) {
     console.error('Error al cargar desde Google Sheets:', err);
     alert('❌ Error al cargar los datos desde Google Sheets.');
@@ -867,8 +872,6 @@ if (rango !== 'todos') {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     };
-
-  await cargarDatosDesdeGoogleSheet();  
     
   try {
       const prompt = `
@@ -1298,6 +1301,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
