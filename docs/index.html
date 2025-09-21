@@ -477,29 +477,31 @@
 
 
 let datosExcel = []; // variable global donde se guardan los datos
-let columnOrder = []; /
-
+  
 async function cargarDatosDesdeGoogleSheet() {
   const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=csv';
-
+  
   try {
     const response = await fetch(urlCSV);
     const csvText = await response.text();
+    const workbook = XLSX.read(csvText, { type: 'string' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    datosExcel = XLSX.utils.sheet_to_json(worksheet);
 
+    // Convertir CSV → JSON
     // Convertir CSV a filas
     const filas = csvText.trim().split("\n").map(row => row.split(","));
+    const headers = filas.shift();
 
     // Guardar encabezados en el orden exacto del Sheet
     columnOrder = filas.shift().map(h => h.trim());
 
     // Guardar datos como objetos, siempre siguiendo columnOrder
     datosExcel = filas.map(fila =>
+      Object.fromEntries(fila.map((val, i) => [headers[i], val]))
       Object.fromEntries(fila.map((val, i) => [columnOrder[i], val.trim()]))
     );
-
-    console.log("Orden de columnas:", columnOrder);
-    console.log("Datos cargados:", datosExcel);
-
     
   } catch (err) {
     console.error('Error al cargar desde Google Sheets:', err);
@@ -1311,6 +1313,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
