@@ -1283,7 +1283,7 @@ if (rango !== 'todos') {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({
-         prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
+         prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA) \n\n Importante: responde solo en texto plano, sin usar negritas, listas o formato Markdown.}`
         })
       });
       const json = await resp.json();
@@ -1302,6 +1302,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
