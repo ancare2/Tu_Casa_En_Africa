@@ -1287,7 +1287,11 @@ if (rango !== 'todos') {
         })
       });
       const json = await resp.json();
-      document.getElementById('respuestaIA').textContent = json.text || 'No se recibió respuesta.';
+    
+      let respuesta = json.text || 'No se recibió respuesta.';
+      respuesta = respuesta.replace(/\*\*(.*?)\*\*/g, '$1');
+      document.getElementById('respuestaIA').textContent = respuesta;
+
     } catch (e) {
       document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
     }
@@ -1302,6 +1306,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
