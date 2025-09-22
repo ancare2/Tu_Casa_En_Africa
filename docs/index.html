@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Tu Casa en África - Registro de Consulta</title>
   <title>Tu Casa en África - Registros de Consulta</title>
   <style>
     body {
@@ -203,9 +202,11 @@
   <div>
     <button id="startBtn" disabled>Empezar</button>
     <button id="stopBtn" disabled>Detener</button>
-    <button id="guardarRegistro">Guardar Registro</button>
+    <button id="siguientePaciente" style="background:#d49ed4; color:white; padding:10px 16px; border:none; border-radius:5px;"> Siguiente paciente</button>
+    <button id="guardarRegistro">Guardar Registros</button>
     <button id="descargarExcel">📥 Descargar Excel</button>
     <button id="consultarIA" style="background-color: #16a085; color: white; padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">🤖 Consultar IA</button>
+    <button id="generarDiario" style="background-color: #9aad44; color: white; padding: 10px 16px; border: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">📝 Generar diario de campo</button>
   </div>
 
   <p><strong>Campo seleccionado:</strong> <span id="campoSeleccionado">Ninguno</span></p>
@@ -270,6 +271,7 @@
   let filaActual = null;
   let modoEdicion = false;
   let modoBorrado = false;
+  let detenerManual = false;
 
   const campos = ['nombre', 'edad', 'pueblo', 'motivo', 'diagnostico', 'tratamiento', 'seguimiento'];
 
@@ -300,6 +302,7 @@
   const editFieldLabel = document.getElementById('editFieldLabel');
   const siguientePacienteBtn = document.getElementById('siguientePaciente');
   const guardarTodoBtn = document.getElementById('guardarTodo');
+  const generarDiarioBtn = document.getElementById('generarDiario');
 
   const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfglAdf-IhYnrfNNLYpkKz93eF9F9d080m7u8gjCepP2lbkxg/formResponse';
   const FORM_FIELD_MAPPING = {
@@ -413,6 +416,10 @@
       isRecording = false;
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
+      if (!detenerManual) {
+        recognition.start();
+        isRecording = true;
+  }
     };
 
   } catch (e) {
@@ -423,6 +430,7 @@
 
   if (startBtn) startBtn.addEventListener('click', () => {
     if (recognition && !isRecording) {
+      detenerManual = false;
       textoCompleto = "";
       if (transcripcionDiv) transcripcionDiv.textContent = "";
       recognition.start();
@@ -431,6 +439,7 @@
 
   if (stopBtn) stopBtn.addEventListener('click', () => {
     if (recognition && isRecording) {
+      detenerManual = true; 
       recognition.stop();
     }
   });
@@ -466,9 +475,482 @@
     abrirModalEdicion(campoSeleccionado, textoCompleto.trim(), true);
   });
 
+
+let datosExcel = []; // variable global donde se guardan los datos
+
+async function cargarDatosDesdeGoogleSheet() {
+  const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=csv';
+
+  try {
+    const response = await fetch(urlCSV);
+    const csvText = await response.text();
+    const workbook = XLSX.read(csvText, { type: 'string' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    datosExcel = XLSX.utils.sheet_to_json(worksheet);
+
+    // Convertir CSV → JSON
+    const filas = csvText.trim().split("\n").map(row => row.split(","));
+    const headers = filas.shift();
+    datosExcel = filas.map(fila =>
+      Object.fromEntries(fila.map((val, i) => [headers[i], val]))
+    );
+    
+  } catch (err) {
+    console.error('Error al cargar desde Google Sheets:', err);
+    alert('❌ Error al cargar los datos desde Google Sheets.');
+  }
+}
+
+window.addEventListener('load', async () => {
+  await cargarDatosDesdeGoogleSheet();
+});
+
+function pedirRangoFechas() {
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '10000';
+
+    modal.innerHTML = `
+      <div style="background: white; padding: 20px; border-radius: 8px; width: 350px; max-width: 90%;">
+        <h3>Filtrar registros por fecha</h3>
+        <label>Desde (dd/mm/yyyy): <input type="text" id="fechaDesde" placeholder="Ej. 01/08/2025"></label><br><br>
+        <label>Hasta (dd/mm/yyyy): <input type="text" id="fechaHasta" placeholder="Ej. 11/08/2025"></label><br><br>
+        <button id="btnTodos" style="margin-right: 10px;">Usar todos los registros</button>
+        <button id="btnFiltrar">Filtrar</button>
+        <button id="btnCancelar" style="margin-left: 10px; background: #ccc;">Cancelar</button>
+        <p id="errorFecha" style="color:red; margin-top:10px; display:none;"></p>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const btnTodos = modal.querySelector('#btnTodos');
+    const btnFiltrar = modal.querySelector('#btnFiltrar');
+    const btnCancelar = modal.querySelector('#btnCancelar');
+    const errorFecha = modal.querySelector('#errorFecha');
+
+    function limpiar() {
+      modal.remove();
+    }
+
+    btnCancelar.onclick = () => {
+      limpiar();
+      resolve(null);  // Cancela
+    };
+
+    btnTodos.onclick = () => {
+      limpiar();
+      resolve('todos');
+    };
+
+    btnFiltrar.onclick = () => {
+      const desdeStr = modal.querySelector('#fechaDesde').value.trim();
+      const hastaStr = modal.querySelector('#fechaHasta').value.trim();
+
+      if (!desdeStr || !hastaStr) {
+        errorFecha.textContent = 'Por favor ingresa ambas fechas.';
+        errorFecha.style.display = 'block';
+        return;
+      }
+
+      // Validar formato dd/mm/yyyy con regex básica
+      const formatoValido = /^\d{2}\/\d{2}\/\d{4}$/;
+      if (!formatoValido.test(desdeStr) || !formatoValido.test(hastaStr)) {
+        errorFecha.textContent = 'Formato de fecha inválido, usa dd/mm/yyyy.';
+        errorFecha.style.display = 'block';
+        return;
+      }
+
+      // Extraer día, mes, año y usar padStart para asegurarse de que tengan 2 dígitos
+      let [ddDesde, mmDesde, yyyyDesde] = desdeStr.split('/');
+      let [ddHasta, mmHasta, yyyyHasta] = hastaStr.split('/');
+
+      ddDesde = ddDesde.padStart(2, '0');
+      mmDesde = mmDesde.padStart(2, '0');
+      ddHasta = ddHasta.padStart(2, '0');
+      mmHasta = mmHasta.padStart(2, '0');
+
+      // Crear objetos Date con formato ISO correcto
+      const fechaDesde = new Date(`${yyyyDesde}-${mmDesde}-${ddDesde}T00:00:00`);
+      const fechaHasta = new Date(`${yyyyHasta}-${mmHasta}-${ddHasta}T23:59:59`);
+
+      // Validar fechas válidas
+      if (isNaN(fechaDesde.getTime()) || isNaN(fechaHasta.getTime())) {
+        errorFecha.textContent = 'Fechas inválidas.';
+        errorFecha.style.display = 'block';
+        return;
+      }
+
+      if (fechaDesde > fechaHasta) {
+        errorFecha.textContent = '"Desde" no puede ser mayor que "Hasta".';
+        errorFecha.style.display = 'block';
+        return;
+      }
+
+      limpiar();
+      resolve({ desde: fechaDesde, hasta: fechaHasta });
+    };
+  });
+}
+
+function mostrarOpcionesPueblo(botonPueblo) {
+    const opciones = ['Abéné', 'Kafountine', 'Badiouré', 'Diouloulou', 'Kabadio', 'Diannah', 'Kabiline', 'Ziguinchor', 'Cabo Skirring','Otro'];
+
+    // Eliminar desplegable anterior si existe
+    const existente = document.getElementById('listaPueblos');
+    if (existente) existente.remove();
+
+    // Crear contenedor estilizado
+    const contenedor = document.createElement('div');
+    contenedor.id = 'listaPueblos';
+    Object.assign(contenedor.style, {
+      position: 'absolute',
+      background: '#ffffff',
+      borderRadius: '12px',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+      overflow: 'hidden',
+      fontFamily: 'Segoe UI, Arial, sans-serif',
+      zIndex: '10000',
+      minWidth: '190px',
+      transform: 'scale(0.95)',
+      opacity: '0',
+      transition: 'transform 0.15s ease, opacity 0.15s ease'
+    });
+
+    // Posicionar junto al botón
+    const rect = botonPueblo.getBoundingClientRect();
+    const left = Math.min(rect.right + window.scrollX + 6, window.innerWidth - 200);
+    const top = rect.top + window.scrollY;
+    contenedor.style.left = `${left}px`;
+    contenedor.style.top = `${top}px`;
+
+    // Cabecera con título y cerrar
+    const cabecera = document.createElement('div');
+    cabecera.style.display = 'flex';
+    cabecera.style.justifyContent = 'space-between';
+    cabecera.style.alignItems = 'center';
+    cabecera.style.padding = '8px 12px';
+    cabecera.style.background = '#f7f7f7';
+    cabecera.style.fontWeight = 'bold';
+    cabecera.style.fontSize = '14px';
+    cabecera.textContent = 'Seleccionar Pueblo';
+
+    const btnCerrar = document.createElement('button');
+    btnCerrar.textContent = '✕';
+    Object.assign(btnCerrar.style, { border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', marginLeft: '8px' });
+    cabecera.appendChild(btnCerrar);
+
+    contenedor.appendChild(cabecera);
+
+    // Lista de opciones
+    opciones.forEach(pueblo => {
+      const opcion = document.createElement('div');
+      opcion.textContent = pueblo;
+      Object.assign(opcion.style, {
+        padding: '10px 14px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        borderBottom: '1px solid #eee',
+        background: '#fff',
+        transition: 'background 0.2s, padding-left 0.2s'
+      });
+
+      opcion.addEventListener('mouseover', () => {
+        opcion.style.background = '#e8f5e9';
+        opcion.style.paddingLeft = '18px';
+      });
+      opcion.addEventListener('mouseout', () => {
+        opcion.style.background = '#fff';
+        opcion.style.paddingLeft = '14px';
+      });
+
+      opcion.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          if (pueblo === 'Otro') {
+            const metodo = confirm("Pulsa Aceptar para escribir manualmente, o Cancelar para grabar por voz.");
+            if (metodo) {
+              const otroPueblo = prompt("Introduce el nombre del pueblo:");
+              if (otroPueblo) {
+                agregarOActualizarRegistro('pueblo', otroPueblo);
+              }
+            } else {
+              if (typeof iniciarGrabacionPueblo === 'function') {
+                iniciarGrabacionPueblo();
+              }
+            }
+          } else {
+            agregarOActualizarRegistro('pueblo', pueblo);
+          }
+        } catch (err) {
+          console.error('Error al seleccionar pueblo:', err);
+        } finally {
+          closeDropdown();
+        }
+      });
+
+      contenedor.appendChild(opcion);
+    });
+
+    document.body.appendChild(contenedor);
+
+    // animación de aparición
+    requestAnimationFrame(() => {
+      contenedor.style.transform = 'scale(1)';
+      contenedor.style.opacity = '1';
+    });
+
+    // Evitar cierre inmediato
+    contenedor.addEventListener('click', (e) => e.stopPropagation());
+    btnCerrar.addEventListener('click', (e) => { e.stopPropagation(); closeDropdown(); });
+
+    function onPointerDown(e) {
+      if (!contenedor.contains(e.target) && e.target !== botonPueblo) {
+        closeDropdown();
+      }
+    }
+    function onKeyDown(e) {
+      if (e.key === 'Escape') closeDropdown();
+    }
+
+    setTimeout(() => {
+      document.addEventListener('pointerdown', onPointerDown);
+      document.addEventListener('keydown', onKeyDown);
+    }, 0);
+
+    function closeDropdown() {
+      if (document.getElementById('listaPueblos')) {
+        document.getElementById('listaPueblos').remove();
+      }
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    }
+  }
+
+  // Conecta al botón
+  const botonPueblo = document.querySelector('button[data-field="pueblo"]');
+  if (botonPueblo) {
+    botonPueblo.addEventListener('click', function (e) {
+      e.stopPropagation();
+      mostrarOpcionesPueblo(this);
+    });
+  }
+
+  
+if (generarDiarioBtn) {
+  generarDiarioBtn.addEventListener('click', async () => {
+    if (!datosExcel || datosExcel.length === 0) {
+      alert('No hay registros cargados para generar el diario. Por favor, carga los datos primero.');
+      return;
+    }
+
+    const rango = await pedirRangoFechas();
+    if (rango === null) {
+      // Usuario canceló
+      return;
+    }
+
+    let datosFiltrados = datosExcel;
+
+
+
+if (rango !== 'todos') {
+  datosFiltrados = datosExcel.filter(registro => {
+    const marcaTemporal = registro['Marca temporal'];
+
+    if (typeof marcaTemporal !== 'string' || !marcaTemporal.trim()) {
+      console.log('Marca temporal inválida o vacía:', marcaTemporal);
+      return false;
+    }
+
+    const [fechaStr] = marcaTemporal.split(' ');
+    const [dd, mm, yyyy] = fechaStr.split('/');
+
+    if (!dd || !mm || !yyyy) {
+      console.log('Fecha mal formada:', fechaStr);
+      return false;
+    }
+
+    const fechaRegistro = new Date(`${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}T00:00:00`);
+
+    if (isNaN(fechaRegistro.getTime())) {
+      console.log('FechaRegistro inválida:', fechaRegistro);
+      return false;
+    }
+
+    const fechaDesde = new Date(rango.desde);
+    fechaDesde.setHours(0, 0, 0, 0);
+    const fechaHasta = new Date(rango.hasta);
+    fechaHasta.setHours(23, 59, 59, 999);
+
+    console.log('Fecha registro:', fechaRegistro);
+    console.log('Rango desde:', fechaDesde);
+    console.log('Rango hasta:', fechaHasta);
+
+    const dentroRango = fechaRegistro >= fechaDesde && fechaRegistro <= fechaHasta;
+    console.log('¿Dentro de rango?', dentroRango);
+
+    return dentroRango;
+  });
+}
+
+
+    // Crear modal para mostrar progreso y resultado
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '1000';
+
+    modal.innerHTML = `
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 600px; max-height: 80%; overflow-y: auto;">
+      <h2>📝 Diario de campo</h2>
+      <div id="textoDiario" style="white-space: pre-wrap; margin-top: 15px;">⏳ Generando...</div>
+      <textarea id="editorDiario" style="display:none; width: 100%; height: 200px; margin-top: 10px;"></textarea>
+      <div style="margin-top: 15px;">
+        <button id="btnEditar" style="margin-right: 10px;">Editar diario</button>
+        <button id="btnDescargar" style="margin-right: 10px;">Descargar TXT</button>
+        <button id="btnCancelar" style="background: #ccc;">Cancelar</button>
+      </div>
+    </div>
+  `;
+
+    document.body.appendChild(modal);
+
+
+    const textoDiario = modal.querySelector('#textoDiario');
+    const editorDiario = modal.querySelector('#editorDiario');
+    const btnEditar = modal.querySelector('#btnEditar');
+    const btnDescargar = modal.querySelector('#btnDescargar');
+    const btnCancelar = modal.querySelector('#btnCancelar');
+
+    btnCancelar.onclick = () => {
+      modal.remove();
+    };
+
+    btnEditar.onclick = () => {
+      if (editorDiario.style.display === 'none') {
+        // Mostrar textarea con contenido para editar
+        editorDiario.value = textoDiario.textContent;
+        editorDiario.style.display = 'block';
+        textoDiario.style.display = 'none';
+        btnEditar.textContent = 'Guardar cambios';
+      } else {
+        // Guardar cambios
+        textoDiario.textContent = editorDiario.value;
+        editorDiario.style.display = 'none';
+        textoDiario.style.display = 'block';
+        btnEditar.textContent = 'Editar diario';
+      }
+    };
+
+    btnDescargar.onclick = () => {
+      const contenido = editorDiario.style.display === 'block' ? editorDiario.value : textoDiario.textContent;
+      const blob = new Blob([contenido], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'diario_de_campo.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+    
+  try {
+      const prompt = `
+      Analiza exclusivamente la información contenida en los siguientes registros médicos (en formato JSON).
+      
+      Objetivo:
+      Generar un resumen general breve y claro del conjunto de datos proporcionados.
+      
+      Instrucciones:
+      1. **Excluir nombres propios.**
+      2. **Usar únicamente la información disponible en los registros.**
+      3. Redactar en prosa fluida y profesional, evitando listas.
+      4. Extensión breve pero suficiente para abarcar las observaciones principales.
+      5. **Nunca resaltes nada en negrita**.
+
+      **Estructura obligatoria** a seguir:
+      - Párrafo 1: Introducción breve y atractiva que presente el conjunto de datos de forma general, utilizando exclusivamente la información disponible.
+      - Párrafo 2: Resumen breve integrado que combine observaciones, motivos de consulta, diagnósticos y seguimientos de forma coherente, sin dividir en secciones.
+      - Párrafo 3: Valoración subjetiva/opinión personal de los registros.
+
+      Datos para analizar:
+      ${JSON.stringify(datosExcel)}
+      `;
+      console.log('Enviando prompt a la API:', prompt);
+
+      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Error en la respuesta: ${resp.status} ${resp.statusText}`);
+      }
+
+      const json = await resp.json();
+
+      console.log('Respuesta de la API:', json);
+
+      document.getElementById('textoDiario').textContent = json.text || 'No se recibió respuesta de la IA.';
+    } catch (e) {
+      console.error('Error generando el diario:', e);
+      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario.';
+    }
+  });
+
+} else {
+  console.error('No se encontró el botón generarDiarioBtn');
+}
+
+
+
+
   function agregarOActualizarRegistro(campo, valor) {
     console.log('Agregar o actualizar campo:', campo, 'valor:', valor);
-    if (!filaActual) {
+  
+      // Si no hay fila activa, crear una nueva
+      if (!filaActual) {
+        filaActual = document.createElement('tr');
+        filaActual.classList.add('borrable');
+        campos.forEach(c => {
+          const td = document.createElement('td');
+          td.textContent = "";
+          td.dataset.field = c;
+          td.classList.add('editable');
+          filaActual.appendChild(td);
+        });
+        tablaBody.appendChild(filaActual);
+      }
+  
+      // Buscar la celda correspondiente y actualizar
+      const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
+      if (celda) {
+        celda.textContent = valor;
+      }
+    }
+  
+    // Función para crear nueva fila vacía
+    function nuevaFilaPaciente() {
       filaActual = document.createElement('tr');
       filaActual.classList.add('borrable');
       campos.forEach(c => {
@@ -480,49 +962,57 @@
       });
       tablaBody.appendChild(filaActual);
     }
-    const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
-    if (celda) {
-      celda.textContent = valor;
-    }
-  }
-
-  if (guardarRegistroBtn) guardarRegistroBtn.addEventListener('click', () => {
-    if (!filaActual) {
-      alert('No hay datos para guardar');
-      return;
-    }
-    const nombre = filaActual.querySelector('[data-field="nombre"]').textContent.trim();
-    if (!nombre) {
-      alert('El campo "Nombre y Apellidos" es obligatorio');
-      return;
-    }
-    const formData = new FormData();
-    campos.forEach(campo => {
-      const celda = filaActual.querySelector(`[data-field="${campo}"]`);
-      if (celda && FORM_FIELD_MAPPING[campo]) {
-        formData.append(FORM_FIELD_MAPPING[campo], celda.textContent.trim());
+  
+    // Botón "Siguiente paciente"
+    siguientePacienteBtn.addEventListener('click', () => {
+      nuevaFilaPaciente();
+    });
+  
+  if (guardarRegistroBtn) {
+    guardarRegistroBtn.addEventListener('click', async () => {
+      const filas = Array.from(tablaBody.querySelectorAll('tr.borrable'));
+      if (filas.length === 0) {
+        alert('No hay datos para guardar');
+        return;
       }
+  
+      for (const fila of filas) {
+        const nombre = fila.querySelector('[data-field="nombre"]').textContent.trim();
+        if (!nombre) {
+          console.warn('Fila sin nombre, se omite');
+          continue;
+        }
+  
+        const formData = new FormData();
+        campos.forEach(campo => {
+          const celda = fila.querySelector(`[data-field="${campo}"]`);
+          if (celda && FORM_FIELD_MAPPING[campo]) {
+            formData.append(FORM_FIELD_MAPPING[campo], celda.textContent.trim());
+          }
+        });
+  
+        try {
+          await fetch(FORM_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: formData
+          });
+          console.log('Registro enviado en orden al Google Form:', nombre);
+        } catch (err) {
+          console.error('Error al enviar el registro:', err);
+        }
+      }
+  
+      alert('✅ Todos los registros de la tabla se han enviado en orden');
+  
+      // Limpiar filaActual y selección de campo
+      filaActual = null;
+      campoSeleccionado = null;
+      if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
+      actualizarEstadoBotones();
+      document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
     });
-
-    fetch(FORM_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: formData
-    })
-    .then(() => {
-      alert('Registro guardado y enviado al Google Form');
-    })
-    .catch(err => {
-      console.error('Error al enviar al formulario:', err);
-      alert('Registro local guardado, pero hubo un error al enviar al Google Form');
-    });
-
-    filaActual = null;
-    campoSeleccionado = null;
-    if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
-    actualizarEstadoBotones();
-    document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
-  });
+  }
 
 
 
@@ -748,7 +1238,6 @@
 
   document.body.appendChild(modal);
 
-  // Cargar automáticamente los datos desde Google Sheets como CSV
   async function cargarDatosDesdeGoogleSheet() {
     const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=csv';
 
@@ -759,7 +1248,6 @@
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       datosExcel = XLSX.utils.sheet_to_json(worksheet);
-      alert(`Datos cargados automáticamente (${datosExcel.length} registros).`);
     } catch (err) {
       console.error('Error al cargar desde Google Sheets:', err);
       alert('❌ Error al cargar los datos desde Google Sheets.');
@@ -800,7 +1288,11 @@
         })
       });
       const json = await resp.json();
-      document.getElementById('respuestaIA').textContent = json.text || 'No se recibió respuesta.';
+    
+      let respuesta = json.text || 'No se recibió respuesta.';
+      respuesta = respuesta.replace(/\*\*(.*?)\*\*/g, '$1');
+      document.getElementById('respuestaIA').textContent = respuesta;
+
     } catch (e) {
       document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
     }
@@ -815,6 +1307,7 @@
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
