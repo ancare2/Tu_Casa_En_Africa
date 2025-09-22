@@ -968,19 +968,23 @@ if (rango !== 'todos') {
       nuevaFilaPaciente();
     });
   
-  if (guardarRegistroBtn) {
+    if (guardarRegistroBtn) {
     guardarRegistroBtn.addEventListener('click', async () => {
+      // Asegurar que la última fila se cierre antes de enviar
+      if (filaActual && !filaActual.classList.contains('borrable')) {
+        filaActual.classList.add('borrable');
+        tablaBody.appendChild(filaActual);
+        filaActual = null; // se fuerza a "cerrar" la fila activa
+      }
+  
       const filas = Array.from(tablaBody.querySelectorAll('tr.borrable'));
       if (filas.length === 0) {
         alert('No hay datos para guardar');
         return;
       }
   
-      // Preguntar confirmación antes de enviar
       const confirmar = confirm(`¿Estás seguro de que quieres guardar ${filas.length} registros?`);
-      if (!confirmar) {
-        return; // cancelar si el usuario no acepta
-      }
+      if (!confirmar) return;
   
       for (const [i, fila] of filas.entries()) {
         const nombre = fila.querySelector('[data-field="nombre"]').textContent.trim();
@@ -1011,15 +1015,13 @@ if (rango !== 'todos') {
   
       alert('✅ Todos los registros de la tabla se han enviado en orden');
   
-      // Limpiar filaActual y selección de campo
-      filaActual = null;
+      // Limpiar selección de campo
       campoSeleccionado = null;
       if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
       actualizarEstadoBotones();
       document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
     });
   }
-  
 
 
   if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
@@ -1313,6 +1315,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
