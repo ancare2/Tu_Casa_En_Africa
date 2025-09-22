@@ -406,7 +406,7 @@
     };
 
     recognition.onerror = (event) => {
-      alert("Error en reconocimiento de voz: " + event.error);
+      #alert("Error en reconocimiento de voz: " + event.error);
       isRecording = false;
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
@@ -1320,6 +1320,7 @@ tablaBody.addEventListener('click', (e) => {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
