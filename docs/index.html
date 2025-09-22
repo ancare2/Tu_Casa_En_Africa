@@ -976,7 +976,13 @@ if (rango !== 'todos') {
         return;
       }
   
-      for (const fila of filas) {
+      // Preguntar confirmación antes de enviar
+      const confirmar = confirm(`¿Estás seguro de que quieres guardar ${filas.length} registros?`);
+      if (!confirmar) {
+        return; // cancelar si el usuario no acepta
+      }
+  
+      for (const [i, fila] of filas.entries()) {
         const nombre = fila.querySelector('[data-field="nombre"]').textContent.trim();
         if (!nombre) {
           console.warn('Fila sin nombre, se omite');
@@ -997,7 +1003,7 @@ if (rango !== 'todos') {
             mode: 'no-cors',
             body: formData
           });
-          console.log('Registro enviado en orden al Google Form:', nombre);
+          console.log(`Registro ${i + 1}/${filas.length} enviado:`, nombre);
         } catch (err) {
           console.error('Error al enviar el registro:', err);
         }
@@ -1013,7 +1019,7 @@ if (rango !== 'todos') {
       document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
     });
   }
-
+  
 
 
   if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
@@ -1307,6 +1313,7 @@ if (rango !== 'todos') {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
