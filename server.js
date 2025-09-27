@@ -8,11 +8,12 @@ dotenv.config();
 
 const app = express();
 
-// --- CORS: solo permite tu frontend en producción y localhost en desarrollo ---
-const allowedOrigins = [
-  'https://tucasaenafrica-africa.up.railway.app' // frontend deployado
-];
-app.use(cors({ origin: allowedOrigins }));
+// --- CORS: solo permite el frontend deployado en Railway ---
+const allowedOrigin = 'https://tucasaenafrica-africa.up.railway.app';
+app.use(cors({
+  origin: allowedOrigin
+}));
+
 app.use(bodyParser.json());
 
 // --- Variables de entorno ---
@@ -85,10 +86,9 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
+// --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
-
-
 
 
 
