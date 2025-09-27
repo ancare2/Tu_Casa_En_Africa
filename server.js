@@ -21,7 +21,7 @@ def generate():
     print(f"[LOG] Recibida solicitud POST /api/generate")
     
     data = request.get_json()
-    prompt = data.get("prompt")
+    prompt = data.get("prompt", "").strip()
     
     if not prompt:
         print('❌ No se recibió "prompt" en la petición')
@@ -53,14 +53,18 @@ def generate():
         response = requests.post(url, headers=headers, json=payload)
         print("Respuesta recibida del API, status:", response.status_code)
 
-        # Si es 402 → no hay créditos
+        # Primero capturamos 402 (no hay créditos)
         if response.status_code == 402:
-            return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), 402
+            return jsonify({
+                "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
+            }), 402
 
         # Otros errores
         if response.status_code != 200:
             print("❌ Error en la respuesta del API:", response.text)
-            return jsonify({"text": f"❌ Error del API: {response.status_code}"}), response.status_code
+            return jsonify({
+                "text": f"❌ Error del API: {response.status_code}"
+            }), response.status_code
 
         data = response.json()
         print("Datos recibidos:", data)
@@ -71,7 +75,9 @@ def generate():
             return jsonify({"text": text})
         else:
             print("⚠️ Respuesta inesperada del API:", data)
-            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 500
+            return jsonify({
+                "text": "⚠️ No se recibió una respuesta válida de la IA."
+            }), 500
 
     except Exception as err:
         print("❌ Error al consultar OpenRouter:", err)
