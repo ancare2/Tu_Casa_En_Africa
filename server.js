@@ -25,25 +25,29 @@ if (!process.env.OPENAI_API_KEY) {
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-console.log('🔑 OPENAI_API_KEY está definida ✅');
-
 // --- CORS: permitir GitHub Pages y tu dominio deployado ---
+const allowedOrigins = [
+  'https://ancare2.github.io',
+  'https://tucasaenafrica-africa.up.railway.app'
+];
+
 app.use(cors({
-  origin: ['https://ancare2.github.io', 'https://tucasaenafrica-africa.up.railway.app'],
+  origin: function(origin, callback) {
+    // Permitir requests sin origin (ej: Postman) y los que están en allowedOrigins
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS policy: Origin not allowed'));
+    }
+  },
   methods: ['GET','POST','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization','x-api-key']
 }));
-
-// --- Manejar preflight OPTIONS ---
-app.options('*', cors());
 
 app.use(bodyParser.json());
 
 // --- Helper para enviar prompt a OpenAI ---
 async function fetchOpenAI(prompt) {
-  console.log('➡️ Enviando prompt a OpenAI (truncado a 500 chars):');
-  console.log(prompt.slice(0, 500) + (prompt.length > 500 ? '... [truncado]' : ''));
-
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -60,12 +64,9 @@ async function fetchOpenAI(prompt) {
     })
   });
 
-  console.log('Status OpenAI:', response.status);
-
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('❌ Error del API OpenAI:', errorText);
-    throw new Error(`OpenAI Error: ${response.status}`);
+    throw new Error(`OpenAI Error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -74,8 +75,6 @@ async function fetchOpenAI(prompt) {
 
 // --- Ruta POST ---
 app.post('/api/generate', async (req, res) => {
-  console.log('➡️ Nueva petición a /api/generate');
-
   const { prompt, datos } = req.body;
   if (!prompt || !Array.isArray(datos) || datos.length === 0) {
     return res.status(400).json({ text: '❌ Prompt y datos son obligatorios.' });
@@ -112,11 +111,6 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`));
-
-
-
-
-
 
 
 
