@@ -10,7 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('✅ Variables cargadas desde .env');
 }
 
-// --- DEBUG: imprimir variable OPENAI_API_KEY ---
+// --- DEBUG ---
 console.log('🔍 DEBUG: process.env.OPENAI_API_KEY:',
   process.env.OPENAI_API_KEY ? '[OK]' : '[NO DEFINIDA]');
 console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
@@ -25,29 +25,25 @@ if (!process.env.OPENAI_API_KEY) {
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-// --- CORS: permitir GitHub Pages y tu dominio deployado ---
-const allowedOrigins = [
-  'https://ancare2.github.io',
-  'https://tucasaenafrica-africa.up.railway.app'
-];
+console.log('🔑 OPENAI_API_KEY está definida ✅');
 
+// --- CORS: permitir GitHub Pages y tu dominio deployado ---
 app.use(cors({
-  origin: function(origin, callback) {
-    // Permitir requests sin origin (ej: Postman) y los que están en allowedOrigins
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS policy: Origin not allowed'));
-    }
-  },
+  origin: ['https://ancare2.github.io', 'https://tucasaenafrica-africa.up.railway.app'], 
   methods: ['GET','POST','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization','x-api-key']
 }));
+
+// --- Manejar preflight OPTIONS explícitamente ---
+app.options('*', cors());
 
 app.use(bodyParser.json());
 
 // --- Helper para enviar prompt a OpenAI ---
 async function fetchOpenAI(prompt) {
+  console.log('➡️ Enviando prompt a OpenAI (truncado a 500 chars):');
+  console.log(prompt.slice(0, 500) + (prompt.length > 500 ? '... [truncado]' : ''));
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -66,7 +62,8 @@ async function fetchOpenAI(prompt) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenAI Error: ${response.status} - ${errorText}`);
+    console.error('❌ Error del API OpenAI:', errorText);
+    throw new Error(`OpenAI Error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -75,6 +72,8 @@ async function fetchOpenAI(prompt) {
 
 // --- Ruta POST ---
 app.post('/api/generate', async (req, res) => {
+  console.log('➡️ Nueva petición a /api/generate');
+
   const { prompt, datos } = req.body;
   if (!prompt || !Array.isArray(datos) || datos.length === 0) {
     return res.status(400).json({ text: '❌ Prompt y datos son obligatorios.' });
