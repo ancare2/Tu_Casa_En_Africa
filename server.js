@@ -44,39 +44,38 @@ def generate():
         response = requests.post(url, headers=headers, json=payload)
         print("Respuesta recibida del API, status:", response.status_code)
 
-        # Intentar leer JSON aunque sea error
         try:
             data_json = response.json()
         except Exception:
             data_json = {}
 
-        # Capturar falta de créditos (402)
+        # Capturar cualquier indicio de falta de créditos y devolver 200
         if response.status_code == 402 or data_json.get("error", {}).get("code") == 402:
             return jsonify({
                 "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
-            }), 402
+            }), 200  # <- FORZAMOS 200
 
-        # Otros errores del API
+        # Otros errores del API también devuelven 200 para frontend
         if response.status_code != 200:
             return jsonify({
                 "text": f"❌ Error del API: {response.status_code}"
-            }), response.status_code
+            }), 200  # <- FORZAMOS 200
 
-        # Extraer texto de la respuesta
         text = data_json.get("choices", [{}])[0].get("message", {}).get("content")
         if text:
             return jsonify({"text": text})
         else:
-            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 500
+            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 200
 
     except Exception as err:
         print("❌ Error al consultar OpenRouter:", err)
-        return jsonify({"text": "❌ Error al consultar la IA."}), 500
+        return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), 200
 
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
     print(f"✅ Servidor escuchando en http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
+
 
 
 
