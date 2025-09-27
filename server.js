@@ -1,78 +1,49 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
-import requests
-from dotenv import load_dotenv
-import sys
+import pandas as pd
+from gpt4all import GPT4All
 
-load_dotenv()
-
+# Inicializar Flask
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Ajusta el origen si quieres restringirlo
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+# Inicializar modelo local GPT4All
+# Asegúrate de tener el archivo del modelo en la misma carpeta o ruta correcta
+model = GPT4All("gpt4all-lora-quantized.bin")  
 
-if not OPENROUTER_API_KEY:
-    print("❌ ERROR: La variable OPENROUTER_API_KEY no está definida.")
-    sys.exit(1)
+# URL de Google Sheets publicada como CSV
+URL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=csv"
+
+# Cargar datos de pacientes en memoria
+try:
+    df_pacientes = pd.read_csv(URL_CSV)
+    print(f"✅ Cargados {len(df_pacientes)} pacientes desde Google Sheets")
+except Exception as e:
+    print("❌ Error al cargar Google Sheets:", e)
+    df_pacientes = pd.DataFrame()  # Tabla vacía si falla
 
 @app.route("/api/generate", methods=["POST"])
 def generate():
-    print(f"[LOG] Recibida solicitud POST /api/generate")
-    
     data = request.get_json()
-    prompt = data.get("prompt")
-    
-    if not prompt:
-        print('❌ No se recibió "prompt" en la petición')
-        return jsonify({"text": '❌ El campo "prompt" es obligatorio.'}), 400
+    pregunta = data.get("prompt", "").strip()
 
-    print("Enviando prompt a OpenRouter API:", prompt)
+    if not pregunta:
+        return jsonify({"text": "❌ El campo 'prompt' es obligatorio"}), 400
 
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "openai/gpt-3.5-turbo",
-        "messages": [
-            {
-                "role": "system",
-                "content": "Eres un asistente que ayuda a analizar registros médicos de pacientes desde una hoja de cálculo."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "max_tokens": int(os.getenv("MAX_TOKENS", 800))  # Límite seguro
-    }
+    # Crear prompt completo combinando la pregunta y todos los pacientes
+    prompt_full = f"Pregunta: {pregunta}\nPacientes:\n{df_pacientes.to_dict(orient='records')}"
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
-        print("Respuesta recibida del API, status:", response.status_code)
-
-        if response.status_code != 200:
-            print("❌ Error en la respuesta del API:", response.text)
-            return jsonify({"text": f"❌ Error del API: {response.status_code}"}), response.status_code
-
-        data = response.json()
-        print("Datos recibidos:", data)
-
-        text = data.get("choices", [{}])[0].get("message", {}).get("content")
-        if text:
-            print("Respuesta procesada correctamente, enviando texto al cliente.")
-            return jsonify({"text": text})
-        else:
-            print("⚠️ Respuesta inesperada del API:", data)
-            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 500
-
-    except Exception as err:
-        print("❌ Error al consultar OpenRouter:", err)
-        return jsonify({"text": "❌ Error al consultar la IA."}), 500
+        # Generar respuesta usando GPT4All local
+        respuesta = model.generate(prompt_full)
+        return jsonify({"text": respuesta})
+    except Exception as e:
+        print("❌ Error al generar respuesta:", e)
+        return jsonify({"text": "❌ Error al procesar la IA local"}), 500
 
 if __name__ == "__main__":
-    PORT = int(os.getenv("PORT", 3000))
-    print(f"✅ Servidor escuchando en http://localhost:{PORT}")
+    PORT = 5000
+    print(f"✅ Servidor Flask corriendo en http://0.0.0.0:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
+
+
