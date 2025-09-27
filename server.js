@@ -1,60 +1,78 @@
-app.post('/api/generate', async (req, res) => {
-  console.log(`[${new Date().toISOString()}] Recibida solicitud POST /api/generate`);
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os
+import requests
+from dotenv import load_dotenv
+import sys
 
-  const { prompt } = req.body;
+load_dotenv()
 
-  if (!prompt) {
-    console.warn('❌ No se recibió "prompt" en la petición');
-    return res.status(400).json({ text: '❌ El campo "prompt" es obligatorio.' });
-  }
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})  # Ajusta el origen si quieres restringirlo
 
-  console.log('Enviando prompt a OpenRouter API:', prompt);
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-  try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: 'Eres un asistente que ayuda a analizar registros médicos de pacientes desde una hoja de cálculo.' },
-          { role: 'user', content: prompt }
+if not OPENROUTER_API_KEY:
+    print("❌ ERROR: La variable OPENROUTER_API_KEY no está definida.")
+    sys.exit(1)
+
+@app.route("/api/generate", methods=["POST"])
+def generate():
+    print(f"[LOG] Recibida solicitud POST /api/generate")
+    
+    data = request.get_json()
+    prompt = data.get("prompt")
+    
+    if not prompt:
+        print('❌ No se recibió "prompt" en la petición')
+        return jsonify({"text": '❌ El campo "prompt" es obligatorio.'}), 400
+
+    print("Enviando prompt a OpenRouter API:", prompt)
+
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "openai/gpt-3.5-turbo",
+        "messages": [
+            {
+                "role": "system",
+                "content": "Eres un asistente que ayuda a analizar registros médicos de pacientes desde una hoja de cálculo."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
         ],
-        max_tokens: parseInt(process.env.MAX_TOKENS || "800") // <- límite seguro para no gastar todos los créditos
-      })
-    });
-
-    console.log('Respuesta recibida del API, status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Error en la respuesta del API:', errorText);
-      return res.status(response.status).json({ text: `❌ Error del API: ${response.status}` });
+        "max_tokens": int(os.getenv("MAX_TOKENS", 800))  # Límite seguro
     }
 
-    const data = await response.json();
-    console.log('Datos recibidos:', data);
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        print("Respuesta recibida del API, status:", response.status_code)
 
-    const text = data?.choices?.[0]?.message?.content;
+        if response.status_code != 200:
+            print("❌ Error en la respuesta del API:", response.text)
+            return jsonify({"text": f"❌ Error del API: {response.status_code}"}), response.status_code
 
-    if (text) {
-      console.log('Respuesta procesada correctamente, enviando texto al cliente.');
-      res.json({ text });
-    } else {
-      console.error('⚠️ Respuesta inesperada del API:', data);
-      res.status(500).json({ text: '⚠️ No se recibió una respuesta válida de la IA.' });
-    }
-  } catch (err) {
-    console.error('❌ Error al consultar OpenRouter:', err);
-    res.status(500).json({ text: '❌ Error al consultar la IA.' });
-  }
-});
+        data = response.json()
+        print("Datos recibidos:", data)
 
+        text = data.get("choices", [{}])[0].get("message", {}).get("content")
+        if text:
+            print("Respuesta procesada correctamente, enviando texto al cliente.")
+            return jsonify({"text": text})
+        else:
+            print("⚠️ Respuesta inesperada del API:", data)
+            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 500
 
+    except Exception as err:
+        print("❌ Error al consultar OpenRouter:", err)
+        return jsonify({"text": "❌ Error al consultar la IA."}), 500
 
-
-
-
+if __name__ == "__main__":
+    PORT = int(os.getenv("PORT", 3000))
+    print(f"✅ Servidor escuchando en http://localhost:{PORT}")
+    app.run(host="0.0.0.0", port=PORT)
