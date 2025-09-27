@@ -13,10 +13,7 @@ const allowedOrigins = [
   'http://localhost:5500', // frontend local
   'https://tucasaenafrica-africa.up.railway.app' // frontend deployado
 ];
-app.use(cors({
-  origin: allowedOrigins
-}));
-
+app.use(cors({ origin: allowedOrigins }));
 app.use(bodyParser.json());
 
 // --- Variables de entorno ---
@@ -25,20 +22,27 @@ const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
 
 // --- Ruta POST para generar texto ---
 app.post('/api/generate', async (req, res) => {
+  console.log('➡️ Nueva petición a /api/generate');
+  console.log('Cuerpo de la petición:', req.body);
+
   // Validar token si se configuró
   if (SECRET_TOKEN) {
     const token = req.headers['x-api-key'];
+    console.log('Token recibido:', token);
     if (token !== SECRET_TOKEN) {
+      console.error('❌ Token inválido');
       return res.status(401).json({ text: '❌ Acceso denegado. Token inválido.' });
     }
   }
 
   const { prompt } = req.body;
   if (!prompt) {
+    console.error('❌ Prompt vacío');
     return res.status(400).json({ text: '❌ El campo "prompt" es obligatorio.' });
   }
 
   try {
+    console.log('➡️ Enviando petición a OpenAI...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -46,7 +50,7 @@ app.post('/api/generate', async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo", // o gpt-4 si tienes acceso
+        model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: "Eres un asistente que ayuda a analizar registros médicos de pacientes." },
           { role: "user", content: prompt }
@@ -55,7 +59,8 @@ app.post('/api/generate', async (req, res) => {
       })
     });
 
-    // Mejor manejo de errores
+    console.log('Status de la respuesta OpenAI:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Error del API OpenAI:', errorText);
@@ -63,9 +68,12 @@ app.post('/api/generate', async (req, res) => {
     }
 
     const data = await response.json();
+    console.log('Respuesta completa de OpenAI:', JSON.stringify(data, null, 2));
+
     const text = data?.choices?.[0]?.message?.content;
 
     if (text) {
+      console.log('✅ Respuesta extraída:', text);
       res.json({ text });
     } else {
       console.error('⚠️ Respuesta inesperada de OpenAI:', data);
@@ -80,6 +88,8 @@ app.post('/api/generate', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
+
+
 
 
 
