@@ -914,7 +914,7 @@ if (rango !== 'todos') {
       document.getElementById('textoDiario').textContent = json.text || 'No se recibió respuesta de la IA.';
     } catch (e) {
       console.error('Error generando el diario:', e);
-      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario.';
+      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario. Se necesita introducir más dinero para poder continuar generando diarios.';
     }
   });
 
@@ -931,7 +931,7 @@ if (rango !== 'todos') {
       // Si no hay fila activa, crear una nueva
       if (!filaActual) {
         filaActual = document.createElement('tr');
-        filaActual.classList.add('borrable');
+        filaActual.classList.add('registro'); // <-- clase fija para guardar
         campos.forEach(c => {
           const td = document.createElement('td');
           td.textContent = "";
@@ -941,7 +941,7 @@ if (rango !== 'todos') {
         });
         tablaBody.appendChild(filaActual);
       }
-  
+    
       // Buscar la celda correspondiente y actualizar
       const celda = Array.from(filaActual.children).find(td => td.dataset.field === campo);
       if (celda) {
@@ -952,7 +952,7 @@ if (rango !== 'todos') {
     // Función para crear nueva fila vacía
     function nuevaFilaPaciente() {
       filaActual = document.createElement('tr');
-      filaActual.classList.add('borrable');
+      filaActual.classList.add('registro'); // <-- clase fija para guardar
       campos.forEach(c => {
         const td = document.createElement('td');
         td.textContent = "";
@@ -962,99 +962,101 @@ if (rango !== 'todos') {
       });
       tablaBody.appendChild(filaActual);
     }
-  
+      
     // Botón "Siguiente paciente"
     siguientePacienteBtn.addEventListener('click', () => {
       nuevaFilaPaciente();
     });
   
-  if (guardarRegistroBtn) {
-    guardarRegistroBtn.addEventListener('click', async () => {
-      // Asegurar que la última fila se cierre antes de enviar
-      if (filaActual && !filaActual.classList.contains('borrable')) {
-        filaActual.classList.add('borrable');
-        tablaBody.appendChild(filaActual);
-        filaActual = null; // se fuerza a "cerrar" la fila activa
-      }
-  
-      const filas = Array.from(tablaBody.querySelectorAll('tr.borrable'));
-      if (filas.length === 0) {
-        alert('No hay datos para guardar');
-        return;
-      }
-  
-      const confirmar = confirm(`¿Estás seguro de que quieres guardar ${filas.length} registros?`);
-      if (!confirmar) return;
-  
-      for (const [i, fila] of filas.entries()) {
-        const nombre = fila.querySelector('[data-field="nombre"]').textContent.trim();
-        if (!nombre) {
-          console.warn('Fila sin nombre, se omite');
-          continue;
+    if (guardarRegistroBtn) {
+      guardarRegistroBtn.addEventListener('click', async () => {
+        // Asegurar que la última fila se cierre antes de enviar
+        if (filaActual && !filaActual.classList.contains('registro')) {
+          filaActual.classList.add('registro');
+          tablaBody.appendChild(filaActual);
+          filaActual = null;
         }
+    
+        const filas = Array.from(tablaBody.querySelectorAll('tr.registro')); // <-- guardamos todas las filas de registros
+        if (filas.length === 0) {
+          alert('No hay datos para guardar');
+          return;
+        }
+    
+        const confirmar = confirm(`¿Estás seguro de que quieres guardar ${filas.length} registros?`);
+        if (!confirmar) return;
+    
+        for (const [i, fila] of filas.entries()) {
+          const nombre = fila.querySelector('[data-field="nombre"]').textContent.trim();
+          if (!nombre) {
+            console.warn('Fila sin nombre, se omite');
+            continue;
+          }
+    
+          const formData = new FormData();
+          campos.forEach(campo => {
+            const celda = fila.querySelector(`[data-field="${campo}"]`);
+            if (celda && FORM_FIELD_MAPPING[campo]) {
+              formData.append(FORM_FIELD_MAPPING[campo], celda.textContent.trim());
+            }
+          });
+    
+          try {
+            await fetch(FORM_URL, {
+              method: 'POST',
+              mode: 'no-cors',
+              body: formData
+            });
+            console.log(`Registro ${i + 1}/${filas.length} enviado:`, nombre);
+          } catch (err) {
+            console.error('Error al enviar el registro:', err);
+          }
+        }
+    
+        alert('✅ Todos los registros de la tabla se han enviado en orden');
+    
+        // Limpiar selección de campo
+        campoSeleccionado = null;
+        if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
+        actualizarEstadoBotones();
+        document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
+      });
+    }
   
-        const formData = new FormData();
-        campos.forEach(campo => {
-          const celda = fila.querySelector(`[data-field="${campo}"]`);
-          if (celda && FORM_FIELD_MAPPING[campo]) {
-            formData.append(FORM_FIELD_MAPPING[campo], celda.textContent.trim());
+
+
+    if (descargarExcelBtn) {
+      descargarExcelBtn.addEventListener('click', () => {
+        const wb = XLSX.utils.book_new();
+        let data = [];
+        const header = campos.map(c => {
+          switch(c) {
+            case 'nombre': return 'Nombre y Apellidos';
+            case 'edad': return 'Edad';
+            case 'pueblo': return 'Pueblo';
+            case 'motivo': return 'Motivo';
+            case 'diagnostico': return 'Diagnóstico';
+            case 'tratamiento': return 'Tratamiento';
+            case 'seguimiento': return '¿Seguimiento?';
+            default: return c;
           }
         });
-  
-        try {
-          await fetch(FORM_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: formData
+        data.push(header);
+    
+        Array.from(tablaBody.querySelectorAll('tr.registro')).forEach(tr => {
+          const fila = [];
+          campos.forEach(campo => {
+            const celda = tr.querySelector(`[data-field="${campo}"]`);
+            fila.push(celda ? celda.textContent : '');
           });
-          console.log(`Registro ${i + 1}/${filas.length} enviado:`, nombre);
-        } catch (err) {
-          console.error('Error al enviar el registro:', err);
-        }
-      }
-  
-      alert('✅ Todos los registros de la tabla se han enviado en orden');
-  
-      // Limpiar selección de campo
-      campoSeleccionado = null;
-      if (campoSeleccionadoSpan) campoSeleccionadoSpan.textContent = 'Ninguno';
-      actualizarEstadoBotones();
-      document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
-    });
-  }
-  
-
-
-  if (descargarExcelBtn) descargarExcelBtn.addEventListener('click', () => {
-    const wb = XLSX.utils.book_new();
-    let data = [];
-    const header = campos.map(c => {
-      switch(c) {
-        case 'nombre': return 'Nombre y Apellidos';
-        case 'edad': return 'Edad';
-        case 'pueblo': return 'Pueblo';
-        case 'motivo': return 'Motivo';
-        case 'diagnostico': return 'Diagnóstico';
-        case 'tratamiento': return 'Tratamiento';
-        case 'seguimiento': return '¿Seguimiento?';
-        default: return c;
-      }
-    });
-    data.push(header);
-
-    Array.from(tablaBody.children).forEach(tr => {
-      const fila = [];
-      campos.forEach(campo => {
-        const celda = tr.querySelector(`[data-field="${campo}"]`);
-        fila.push(celda ? celda.textContent : '');
+          data.push(fila);
+        });
+    
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Registros");
+        XLSX.writeFile(wb, "Registros.xlsx");
       });
-      data.push(fila);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, "Registros");
-    XLSX.writeFile(wb, "Registros.xlsx");
-  });
+    }
 
   eliminarTodosBtn.addEventListener('click', () => {
     if (confirm('¿Estás seguro de eliminar todos los registros?')) {
@@ -1090,38 +1092,40 @@ if (rango !== 'todos') {
     }
   });
 
-  activarBorradoBtn.addEventListener('click', () => {
-    modoBorrado = !modoBorrado;
-    activarBorradoBtn.textContent = modoBorrado ? '✔️ Confirmar borrado' : '❌ Borrar registro';
-    if (modoBorrado) {
-      toggleEdicionBtn.style.display = 'none';
-      buscarRegistroBtn.style.display = 'none';
-      inputBusqueda.style.display = 'none';
-      cerrarBusquedaBtn.style.display = 'none';
-      tablaBody.querySelectorAll('tr').forEach(tr => {
-        tr.style.cursor = 'pointer';
-        tr.classList.add('borrable');
-      });
-    } else {
-      toggleEdicionBtn.style.display = 'inline-block';
-      buscarRegistroBtn.style.display = 'inline-block';
-      tablaBody.querySelectorAll('tr').forEach(tr => {
-        tr.style.cursor = '';
-        tr.classList.remove('borrable');
-      });
-    }
-  });
+ activarBorradoBtn.addEventListener('click', () => {
+  modoBorrado = !modoBorrado;
+  activarBorradoBtn.textContent = modoBorrado ? '✔️ Confirmar borrado' : '❌ Borrar registro';
 
-  tablaBody.addEventListener('click', (e) => {
-    let tr = e.target.closest('tr');
-    if (!tr) return;
+  if (modoBorrado) {
+    toggleEdicionBtn.style.display = 'none';
+    buscarRegistroBtn.style.display = 'none';
+    inputBusqueda.style.display = 'none';
+    cerrarBusquedaBtn.style.display = 'none';
+    tablaBody.querySelectorAll('tr').forEach(tr => {
+      tr.style.cursor = 'pointer';
+      tr.classList.add('seleccion-borrado'); // <-- clase temporal solo para borrar
+    });
+  } else {
+    toggleEdicionBtn.style.display = 'inline-block';
+    buscarRegistroBtn.style.display = 'inline-block';
+    tablaBody.querySelectorAll('tr').forEach(tr => {
+      tr.style.cursor = '';
+      tr.classList.remove('seleccion-borrado');
+    });
+  }
+});
 
-    if (modoBorrado) {
-      if (confirm('¿Eliminar este registro?')) {
-        tr.remove();
-      }
+// BORRAR FILA INDIVIDUAL
+tablaBody.addEventListener('click', (e) => {
+  let tr = e.target.closest('tr');
+  if (!tr) return;
+
+  if (modoBorrado && tr.classList.contains('seleccion-borrado')) {
+    if (confirm('¿Eliminar este registro?')) {
+      tr.remove();
     }
-  });
+  }
+});
 
   buscarRegistroBtn.addEventListener('click', () => {
     buscarRegistroBtn.style.display = 'none';
@@ -1212,13 +1216,13 @@ if (rango !== 'todos') {
 
 // --- Consultar IA ---
 
-  const consultarIABtn = document.getElementById('consultarIA');
+const consultarIABtn = document.getElementById('consultarIA');
 
-  if (consultarIABtn) {
-    consultarIABtn.addEventListener('click', abrirConsultaIA);
-  }
+if (consultarIABtn) {
+  consultarIABtn.addEventListener('click', abrirConsultaIA);
+}
 
-  function abrirConsultaIA() {
+function abrirConsultaIA() {
   // Evitar múltiples modales
   if (document.getElementById('modalConsultaIA')) return;
 
@@ -1241,7 +1245,7 @@ if (rango !== 'todos') {
       <textarea id="preguntaIA" placeholder="Haz una pregunta sobre el Excel..." rows="4" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px;"></textarea>
       <button id="enviarPregunta" style="padding: 10px 20px; border: none; background: #007bff; color: white; border-radius: 6px; cursor: pointer;">Enviar</button>
       <div id="respuestaIA" style="margin-top: 20px; white-space: pre-wrap;"></div>
-      <button onclick="document.getElementById('modalConsultaIA').remove()" style="margin-top: 20px; background: transparent; border: none; color: #555; cursor: pointer;">Cerrar</button>
+      <button id="cerrarIA" style="margin-top: 20px; background: transparent; border: none; color: #555; cursor: pointer;">Cerrar</button>
     </div>
   `;
 
@@ -1265,57 +1269,21 @@ if (rango !== 'todos') {
 
   cargarDatosDesdeGoogleSheet();
 
-
-      // Enviar consulta
-  document.getElementById('enviarPregunta').onclick = async () => {
-    const pregunta = document.getElementById('preguntaIA').value.trim();
-    if (!pregunta) return alert('Escribe una pregunta');
-
-    document.getElementById('respuestaIA').textContent = '⏳ Consultando...';
-
-        // Datos a usar: si hay datos Excel, usar esos, si no, usar tablaBody (tu código original)
-    let datosParaIA;
-    if (datosExcel.length > 0) {
-      datosParaIA = datosExcel;
-    } else {
-      datosParaIA = Array.from(tablaBody.children).map(tr => {
-        const obj = {};
-        campos.forEach(c => {
-          const celda = tr.querySelector(`[data-field="${c}"]`);
-          obj[c] = celda ? celda.textContent.trim() : '';
-        });
-        return obj;
-      });
-     }
-
-    try {
-      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-         prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
-        })
-      });
-      const json = await resp.json();
-    
-      let respuesta = json.text || 'No se recibió respuesta.';
-      respuesta = respuesta.replace(/\*\*(.*?)\*\*/g, '$1');
-      document.getElementById('respuestaIA').textContent = respuesta;
-
-    } catch (e) {
-      document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
-    }
+  // --- Mensaje de “no hay saldo” ---
+  document.getElementById('enviarPregunta').onclick = () => {
+    document.getElementById('respuestaIA').textContent = '❌ Actualmente no hay saldo disponible para consultar la IA. Por favor, recarga para continuar.';
   };
 
-    document.getElementById('cerrarIA').onclick = () => {
+  // Cerrar modal
+  document.getElementById('cerrarIA').onclick = () => {
     modal.remove();
-      };
-    }
+  };
+}
 
+actualizarEstadoBotones();
 
-
-  actualizarEstadoBotones();
 </script>
+
 
 
 
