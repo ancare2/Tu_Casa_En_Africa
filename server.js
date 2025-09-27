@@ -50,20 +50,19 @@ def generate():
         except Exception:
             data_json = {}
 
-        # Capturar cualquier indicio de falta de créditos
+        # Capturar falta de créditos (402)
         if response.status_code == 402 or data_json.get("error", {}).get("code") == 402:
-            # FORZAMOS 200 para que el frontend siempre reciba nuestro mensaje
             return jsonify({
                 "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
-            }), 200
+            }), 402
 
-        # Otros errores
+        # Otros errores del API
         if response.status_code != 200:
             return jsonify({
-                "text": "❌ Error: ocurrió un problema con la IA."
-            }), 200  # <- también forzamos 200
+                "text": f"❌ Error del API: {response.status_code}"
+            }), response.status_code
 
-        # Extraer texto normal
+        # Extraer texto de la respuesta
         text = data_json.get("choices", [{}])[0].get("message", {}).get("content")
         if text:
             return jsonify({"text": text})
@@ -72,8 +71,7 @@ def generate():
 
     except Exception as err:
         print("❌ Error al consultar OpenRouter:", err)
-        # Mensaje consistente sobre créditos incluso si hay excepción
-        return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), 200
+        return jsonify({"text": "❌ Error al consultar la IA."}), 500
 
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
