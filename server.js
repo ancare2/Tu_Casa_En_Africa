@@ -1,77 +1,50 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import os
-import requests
-from dotenv import load_dotenv
-import sys
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import bodyParser from 'body-parser';
+import fetch from 'node-fetch';
 
-load_dotenv()
+dotenv.config();
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
 
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-if not OPENROUTER_API_KEY:
-    print("❌ ERROR: La variable OPENROUTER_API_KEY no está definida.")
-    sys.exit(1)
+app.post('/api/generate', async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ text: '❌ El campo "prompt" es obligatorio.' });
 
-@app.route("/api/generate", methods=["POST"])
-def generate():
-    print(f"[LOG] Recibida solicitud POST /api/generate")
-    data = request.get_json()
-    prompt = data.get("prompt", "").strip()
-
-    if not prompt:
-        return jsonify({"text": "❌ El campo 'prompt' es obligatorio."}), 400
-
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "openai/gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": "Eres un asistente que ayuda a analizar registros médicos de pacientes desde una hoja de cálculo."},
-            {"role": "user", "content": prompt}
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "Eres un asistente que ayuda a analizar registros médicos de pacientes." },
+          { role: "user", content: prompt }
         ],
-        "max_tokens": int(os.getenv("MAX_TOKENS", 800))
-    }
+        max_tokens: 800
+      })
+    });
 
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        print("Respuesta recibida del API, status:", response.status_code)
+    const data = await response.json();
+    const text = data?.choices?.[0]?.message?.content;
 
-        # Intentar leer JSON aunque sea error
-        try:
-            data_json = response.json()
-        except Exception:
-            data_json = {}
+    if (text) res.json({ text });
+    else res.status(500).json({ text: '⚠️ No se recibió respuesta válida de la IA.' });
 
-        # Capturar falta de créditos (402)
-        if response.status_code == 402 or data_json.get("error", {}).get("code") == 402:
-            return jsonify({
-                "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
-            }), 402
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ text: '❌ Error al conectar con la IA.' });
+  }
+});
 
-        # Otros errores del API
-        if response.status_code != 200:
-            return jsonify({
-                "text": f"❌ Error del API: {response.status_code}"
-            }), response.status_code
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
 
-        # Extraer texto de la respuesta
-        text = data_json.get("choices", [{}])[0].get("message", {}).get("content")
-        if text:
-            return jsonify({"text": text})
-        else:
-            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 500
 
-    except Exception as err:
-        print("❌ Error al consultar OpenRouter:", err)
-        return jsonify({"text": "❌ Error al consultar la IA."}), 500
-
-if __name__ == "__main__":
-    PORT = int(os.getenv("PORT", 3000))
-    print(f"✅ Servidor escuchando en http://localhost:{PORT}")
-    app.run(host="0.0.0.0", port=PORT)
