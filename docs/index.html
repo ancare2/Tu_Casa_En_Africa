@@ -914,7 +914,7 @@ if (rango !== 'todos') {
       document.getElementById('textoDiario').textContent = json.text || 'No se recibió respuesta de la IA.';
     } catch (e) {
       console.error('Error generando el diario:', e);
-      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario.';
+      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario. Se necesita introducir más créditos.';
     }
   });
 
@@ -1307,7 +1307,7 @@ tablaBody.addEventListener('click', (e) => {
       document.getElementById('respuestaIA').textContent = respuesta;
 
     } catch (e) {
-      document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
+      document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA. Se necesita introducir más créditos.';
     }
   };
 
@@ -1320,6 +1320,7 @@ tablaBody.addEventListener('click', (e) => {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
