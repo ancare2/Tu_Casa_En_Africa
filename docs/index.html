@@ -1214,15 +1214,14 @@ tablaBody.addEventListener('click', (e) => {
   };
 }
 
-// --- Consultar IA ---
 
-  const consultarIABtn = document.getElementById('consultarIA');
+const consultarIABtn = document.getElementById('consultarIA');
 
-  if (consultarIABtn) {
-    consultarIABtn.addEventListener('click', abrirConsultaIA);
-  }
+if (consultarIABtn) {
+  consultarIABtn.addEventListener('click', abrirConsultaIA);
+}
 
-  function abrirConsultaIA() {
+function abrirConsultaIA() {
   // Evitar múltiples modales
   if (document.getElementById('modalConsultaIA')) return;
 
@@ -1260,27 +1259,26 @@ tablaBody.addEventListener('click', (e) => {
       const workbook = XLSX.read(csvText, { type: 'string' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      datosExcel = XLSX.utils.sheet_to_json(worksheet);
+      window.datosExcel = XLSX.utils.sheet_to_json(worksheet);
     } catch (err) {
       console.error('Error al cargar desde Google Sheets:', err);
       alert('❌ Error al cargar los datos desde Google Sheets.');
+      window.datosExcel = [];
     }
   }
 
   cargarDatosDesdeGoogleSheet();
 
-
-      // Enviar consulta
   document.getElementById('enviarPregunta').onclick = async () => {
     const pregunta = document.getElementById('preguntaIA').value.trim();
     if (!pregunta) return alert('Escribe una pregunta');
 
-    document.getElementById('respuestaIA').textContent = '⏳ Consultando...';
+    const respuestaDiv = document.getElementById('respuestaIA');
+    respuestaDiv.textContent = '⏳ Consultando...';
 
-        // Datos a usar: si hay datos Excel, usar esos, si no, usar tablaBody (tu código original)
     let datosParaIA;
-    if (datosExcel.length > 0) {
-      datosParaIA = datosExcel;
+    if (window.datosExcel && window.datosExcel.length > 0) {
+      datosParaIA = window.datosExcel;
     } else {
       datosParaIA = Array.from(tablaBody.children).map(tr => {
         const obj = {};
@@ -1290,36 +1288,34 @@ tablaBody.addEventListener('click', (e) => {
         });
         return obj;
       });
-     }
+    }
 
     try {
       const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-         prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
         })
       });
+
+      // Leer siempre el JSON, aunque sea status 402 o error
       const json = await resp.json();
-    
-      let respuesta = json.text || 'No se recibió respuesta.';
-      respuesta = respuesta.replace(/\*\*(.*?)\*\*/g, '$1');
-      document.getElementById('respuestaIA').textContent = respuesta;
+
+      // Mostrar el texto directamente
+      let texto = json.text || 'No se recibió respuesta de la IA.';
+      texto = texto.replace(/\*\*(.*?)\*\*/g, '$1'); // quitar ** negritas
+      respuestaDiv.textContent = texto;
 
     } catch (e) {
-      document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
+      console.error('Error generando la consulta:', e);
+      respuestaDiv.textContent = '❌ Error al conectar con la IA.';
     }
   };
-
-    document.getElementById('cerrarIA').onclick = () => {
-    modal.remove();
-      };
-    }
-
-
-
+}
   actualizarEstadoBotones();
 </script>
+
 
 
 
