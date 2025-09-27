@@ -11,13 +11,13 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
 if not OPENROUTER_API_KEY:
     print("❌ ERROR: La variable OPENROUTER_API_KEY no está definida.")
     sys.exit(1)
 
 @app.route("/api/generate", methods=["POST"])
 def generate():
+    print(f"[LOG] Recibida solicitud POST /api/generate")
     data = request.get_json()
     prompt = data.get("prompt", "").strip()
 
@@ -40,12 +40,15 @@ def generate():
 
     try:
         response = requests.post(url, headers=headers, json=payload)
+        print("Respuesta recibida del API, status:", response.status_code)
+
+        # Intentar leer JSON aunque sea error
         try:
             data_json = response.json()
         except Exception:
             data_json = {}
 
-        # Capturar específicamente 402
+        # Capturar falta de créditos (402)
         if response.status_code == 402 or data_json.get("error", {}).get("code") == 402:
             return jsonify({
                 "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
@@ -53,7 +56,9 @@ def generate():
 
         # Otros errores del API
         if response.status_code != 200:
-            return jsonify({"text": f"❌ Error del API: {response.status_code}"}), response.status_code
+            return jsonify({
+                "text": f"❌ Error del API: {response.status_code}"
+            }), response.status_code
 
         # Extraer texto de la respuesta
         text = data_json.get("choices", [{}])[0].get("message", {}).get("content")
@@ -68,8 +73,5 @@ def generate():
 
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
+    print(f"✅ Servidor escuchando en http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
-
-
-
-
