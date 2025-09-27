@@ -16,8 +16,12 @@ app.use(bodyParser.json());
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
 
+console.log('🔑 OpenAI API Key cargada?', !!OPENAI_API_KEY);
+
 // --- Función helper para enviar prompt a OpenAI ---
 async function fetchOpenAI(prompt) {
+  console.log('📨 Enviando prompt a OpenAI (longitud:', prompt.length, 'caracteres)');
+  
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -34,6 +38,8 @@ async function fetchOpenAI(prompt) {
     })
   });
 
+  console.log('🔹 Status de respuesta OpenAI:', response.status);
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error('❌ Error del API OpenAI:', errorText);
@@ -41,12 +47,15 @@ async function fetchOpenAI(prompt) {
   }
 
   const data = await response.json();
+  console.log('🔹 Datos completos de OpenAI:', JSON.stringify(data, null, 2));
+
   return data?.choices?.[0]?.message?.content || null;
 }
 
 // --- Ruta POST ---
 app.post('/api/generate', async (req, res) => {
   console.log('➡️ Nueva petición a /api/generate');
+  console.log('Cuerpo recibido:', req.body);
 
   if (SECRET_TOKEN) {
     const token = req.headers['x-api-key'];
@@ -71,19 +80,25 @@ app.post('/api/generate', async (req, res) => {
       batches.push(datos.slice(i, i + BATCH_SIZE));
     }
 
+    console.log('📦 Número de lotes creados:', batches.length);
+
     const resúmenesParciales = [];
     for (let i = 0; i < batches.length; i++) {
-      console.log(`➡️ Procesando lote ${i+1}/${batches.length}`);
-      const batchPrompt = `${prompt}\n\nDatos del lote ${i+1}:\n${JSON.stringify(batches[i])}`;
+      console.log(`➡️ Procesando lote ${i + 1}/${batches.length}`);
+      const batchPrompt = `${prompt}\n\nDatos del lote ${i + 1}:\n${JSON.stringify(batches[i])}`;
       const resumen = await fetchOpenAI(batchPrompt);
       if (!resumen) {
-        console.error('⚠️ Lote sin respuesta:', i+1);
+        console.error('⚠️ Lote sin respuesta:', i + 1, 'Contenido del lote:', batches[i]);
+      } else {
+        console.log('✅ Resumen parcial recibido:', resumen.slice(0, 200), '...'); // solo los primeros 200 chars
       }
       resúmenesParciales.push(resumen);
     }
 
     // --- Combinar resúmenes parciales ---
     const resumenFinalPrompt = `Combina estos resúmenes parciales en un resumen global único, coherente y profesional:\n${JSON.stringify(resúmenesParciales)}`;
+    console.log('📨 Prompt final para combinar resúmenes (longitud:', resumenFinalPrompt.length, ')');
+
     const resumenGlobal = await fetchOpenAI(resumenFinalPrompt);
 
     if (!resumenGlobal) {
@@ -91,7 +106,7 @@ app.post('/api/generate', async (req, res) => {
       return res.status(500).json({ text: '⚠️ No se recibió respuesta válida de la IA.' });
     }
 
-    console.log('✅ Resumen global generado');
+    console.log('✅ Resumen global generado con éxito');
     res.json({ text: resumenGlobal });
 
   } catch (err) {
@@ -103,3 +118,4 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
+
