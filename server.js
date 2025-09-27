@@ -8,7 +8,7 @@ import sys
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Ajusta el origen si quieres restringirlo
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
@@ -24,10 +24,7 @@ def generate():
     prompt = data.get("prompt", "").strip()
     
     if not prompt:
-        print('❌ No se recibió "prompt" en la petición')
         return jsonify({"text": '❌ El campo "prompt" es obligatorio.'}), 400
-
-    print("Enviando prompt a OpenRouter API:", prompt)
 
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -37,47 +34,35 @@ def generate():
     payload = {
         "model": "openai/gpt-3.5-turbo",
         "messages": [
-            {
-                "role": "system",
-                "content": "Eres un asistente que ayuda a analizar registros médicos de pacientes desde una hoja de cálculo."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "system", "content": "Eres un asistente que ayuda a analizar registros médicos de pacientes desde una hoja de cálculo."},
+            {"role": "user", "content": prompt}
         ],
-        "max_tokens": int(os.getenv("MAX_TOKENS", 800))  # Límite seguro
+        "max_tokens": int(os.getenv("MAX_TOKENS", 800))
     }
 
     try:
         response = requests.post(url, headers=headers, json=payload)
         print("Respuesta recibida del API, status:", response.status_code)
 
-        # Primero capturamos 402 (no hay créditos)
-        if response.status_code == 402:
-            return jsonify({
-                "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
-            }), 402
+        # Intentar leer JSON aunque sea error
+        try:
+            data = response.json()
+        except Exception:
+            data = {}
+
+        # Revisar si el API indica falta de créditos
+        if response.status_code == 402 or data.get("error", {}).get("code") == 402:
+            return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), 402
 
         # Otros errores
         if response.status_code != 200:
-            print("❌ Error en la respuesta del API:", response.text)
-            return jsonify({
-                "text": f"❌ Error: se necesita introducir más crédito para continuar preguntando."
-            }), response.status_code
-
-        data = response.json()
-        print("Datos recibidos:", data)
+            return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), response.status_code
 
         text = data.get("choices", [{}])[0].get("message", {}).get("content")
         if text:
-            print("Respuesta procesada correctamente, enviando texto al cliente.")
             return jsonify({"text": text})
         else:
-            print("⚠️ Respuesta inesperada del API:", data)
-            return jsonify({
-                "text": "⚠️ No se recibió una respuesta válida de la IA."
-            }), 500
+            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 500
 
     except Exception as err:
         print("❌ Error al consultar OpenRouter:", err)
@@ -85,10 +70,7 @@ def generate():
 
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
-    print(f"✅ Servidor escuchando en http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
-
-
 
 
 
