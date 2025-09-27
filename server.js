@@ -18,11 +18,9 @@ if not OPENROUTER_API_KEY:
 
 @app.route("/api/generate", methods=["POST"])
 def generate():
-    print(f"[LOG] Recibida solicitud POST /api/generate")
-    
     data = request.get_json()
     prompt = data.get("prompt", "").strip()
-    
+
     if not prompt:
         return jsonify({"text": "❌ El campo 'prompt' es obligatorio."}), 400
 
@@ -42,38 +40,34 @@ def generate():
 
     try:
         response = requests.post(url, headers=headers, json=payload)
-        print("Respuesta recibida del API, status:", response.status_code)
-
         try:
             data_json = response.json()
         except Exception:
             data_json = {}
 
-        # Capturar cualquier indicio de falta de créditos y devolver 200
+        # Capturar específicamente 402
         if response.status_code == 402 or data_json.get("error", {}).get("code") == 402:
             return jsonify({
                 "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
-            }), 200  # <- FORZAMOS 200
+            }), 402
 
-        # Otros errores del API también devuelven 200 para frontend
+        # Otros errores del API
         if response.status_code != 200:
-            return jsonify({
-                "text": f"❌ Error del API: {response.status_code}"
-            }), 200  # <- FORZAMOS 200
+            return jsonify({"text": f"❌ Error del API: {response.status_code}"}), response.status_code
 
+        # Extraer texto de la respuesta
         text = data_json.get("choices", [{}])[0].get("message", {}).get("content")
         if text:
             return jsonify({"text": text})
         else:
-            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 200
+            return jsonify({"text": "⚠️ No se recibió una respuesta válida de la IA."}), 500
 
     except Exception as err:
         print("❌ Error al consultar OpenRouter:", err)
-        return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), 200
+        return jsonify({"text": "❌ Error al consultar la IA."}), 500
 
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
-    print(f"✅ Servidor escuchando en http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
 
 
