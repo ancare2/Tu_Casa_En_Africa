@@ -53,9 +53,14 @@ def generate():
         response = requests.post(url, headers=headers, json=payload)
         print("Respuesta recibida del API, status:", response.status_code)
 
+        # Si es 402 → no hay créditos
+        if response.status_code == 402:
+            return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), 402
+
+        # Otros errores
         if response.status_code != 200:
             print("❌ Error en la respuesta del API:", response.text)
-            return jsonify({"text": f"❌ Error. Se necesita introducir más crédito para continuar preguntando. }), response.status_code
+            return jsonify({"text": f"❌ Error del API: {response.status_code}"}), response.status_code
 
         data = response.json()
         print("Datos recibidos:", data)
@@ -76,6 +81,7 @@ if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
     print(f"✅ Servidor escuchando en http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
+
 
 
 
