@@ -50,14 +50,19 @@ def generate():
         except Exception:
             data = {}
 
-        # Revisar si el API indica falta de créditos
+        # Capturar cualquier indicio de falta de créditos
         if response.status_code == 402 or data.get("error", {}).get("code") == 402:
-            return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), 402
+            return jsonify({
+                "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
+            }), 402
 
-        # Otros errores
+        # Otros errores (pero ya no mostrar 402 como genérico)
         if response.status_code != 200:
-            return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), response.status_code
+            return jsonify({
+                "text": "❌ Error: ocurrió un problema con la IA."
+            }), response.status_code
 
+        # Extraer texto de la respuesta
         text = data.get("choices", [{}])[0].get("message", {}).get("content")
         if text:
             return jsonify({"text": text})
@@ -70,7 +75,9 @@ def generate():
 
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
+    print(f"✅ Servidor escuchando en http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
+
 
 
 
