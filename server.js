@@ -24,7 +24,7 @@ def generate():
     prompt = data.get("prompt", "").strip()
     
     if not prompt:
-        return jsonify({"text": '❌ El campo "prompt" es obligatorio.'}), 400
+        return jsonify({"text": "❌ El campo 'prompt' es obligatorio."}), 400
 
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -46,24 +46,25 @@ def generate():
 
         # Intentar leer JSON aunque sea error
         try:
-            data = response.json()
+            data_json = response.json()
         except Exception:
-            data = {}
+            data_json = {}
 
         # Capturar cualquier indicio de falta de créditos
-        if response.status_code == 402 or data.get("error", {}).get("code") == 402:
+        if response.status_code == 402 or data_json.get("error", {}).get("code") == 402:
+            # FORZAMOS 200 para que el frontend siempre reciba nuestro mensaje
             return jsonify({
                 "text": "❌ Error: se necesita introducir más crédito para continuar preguntando."
-            }), 402
+            }), 200
 
-        # Otros errores (pero ya no mostrar 402 como genérico)
+        # Otros errores
         if response.status_code != 200:
             return jsonify({
                 "text": "❌ Error: ocurrió un problema con la IA."
-            }), response.status_code
+            }), 200  # <- también forzamos 200
 
-        # Extraer texto de la respuesta
-        text = data.get("choices", [{}])[0].get("message", {}).get("content")
+        # Extraer texto normal
+        text = data_json.get("choices", [{}])[0].get("message", {}).get("content")
         if text:
             return jsonify({"text": text})
         else:
@@ -71,13 +72,13 @@ def generate():
 
     except Exception as err:
         print("❌ Error al consultar OpenRouter:", err)
-        return jsonify({"text": "❌ Error al consultar la IA."}), 500
+        # Mensaje consistente sobre créditos incluso si hay excepción
+        return jsonify({"text": "❌ Error: se necesita introducir más crédito para continuar preguntando."}), 200
 
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
     print(f"✅ Servidor escuchando en http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
-
 
 
 
