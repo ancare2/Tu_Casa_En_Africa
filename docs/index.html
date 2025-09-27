@@ -1305,16 +1305,16 @@ function abrirConsultaIA() {
       // Mostrar el texto directamente
       let texto = json.text || 'No se recibió respuesta de la IA.';
       texto = texto.replace(/\*\*(.*?)\*\*/g, '$1'); // quitar ** negritas
-      respuestaDiv.textContent = texto;
-
-    } catch (e) {
-      console.error('Error generando la consulta:', e);
-      respuestaDiv.textContent = '❌ Error al conectar con la IA.';
-    }
+     document.getElementById('respuestaIA').textContent = json.text || 'No se recibió respuesta de la IA.';
+  } catch (e) {
+    console.error('Error al conectar con la IA:', e);
+    document.getElementById('respuestaIA').textContent = '❌ Error: se necesita introducir más crédito para continuar preguntando.';
+  }
   };
 }
   actualizarEstadoBotones();
 </script>
+
 
 
 
