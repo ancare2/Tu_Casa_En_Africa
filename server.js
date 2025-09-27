@@ -10,7 +10,6 @@ const app = express();
 
 // --- CORS: solo permite tu frontend en producción y localhost en desarrollo ---
 const allowedOrigins = [
-  'http://localhost:5500', // frontend local
   'https://tucasaenafrica-africa.up.railway.app' // frontend deployado
 ];
 app.use(cors({ origin: allowedOrigins }));
@@ -88,6 +87,7 @@ app.post('/api/generate', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
+
 
 
 
