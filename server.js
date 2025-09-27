@@ -13,8 +13,7 @@ if (process.env.NODE_ENV !== 'production') {
 // --- DEBUG: imprimir variable OPENAI_API_KEY ---
 console.log('🔍 DEBUG: process.env.OPENAI_API_KEY:',
   process.env.OPENAI_API_KEY ? '[OK]' : '[NO DEFINIDA]');
-  console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
-  console.log('🔍 Variables de entorno:', process.env);
+console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
 
 const app = express();
 
@@ -29,9 +28,22 @@ const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
 
 console.log('🔑 OPENAI_API_KEY está definida ✅');
 
-// --- CORS: solo frontend deployado ---
-const allowedOrigin = 'https://tucasaenafrica-africa.up.railway.app';
-app.use(cors({ origin: allowedOrigin }));
+// --- CORS: permitir frontend deployado y GitHub Pages ---
+const allowedOrigins = [
+  'https://tucasaenafrica-africa.up.railway.app',
+  'https://ancare2.github.io'
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true); // Postman, curl, etc.
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `⚠️ CORS: origen (${origin}) no permitido.`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  }
+}));
 
 app.use(bodyParser.json());
 
@@ -130,7 +142,6 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`));
-
 
 
 
