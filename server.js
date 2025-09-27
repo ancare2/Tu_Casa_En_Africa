@@ -28,7 +28,7 @@ app.post('/api/generate', async (req, res) => {
           { role: "system", content: "Eres un asistente que ayuda a analizar registros médicos de pacientes." },
           { role: "user", content: prompt }
         ],
-        max_tokens: 800
+        max_tokens: 512
       })
     });
 
@@ -46,5 +46,6 @@ app.post('/api/generate', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
+
 
 
