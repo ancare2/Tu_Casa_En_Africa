@@ -2,8 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import fetch from 'node-fetch';
+import dotenv from 'dotenv'; // ⚠️ necesario
 
-dotenv.config();
+// --- Cargar variables de entorno solo en desarrollo ---
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+  console.log('✅ Variables cargadas desde .env');
+}
+
 const app = express();
 
 // --- Comprobar variable de entorno ---
@@ -118,6 +124,5 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
-
 
 
