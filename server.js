@@ -10,6 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('✅ Variables cargadas desde .env');
 }
 
+// --- DEBUG: imprimir variable OPENAI_API_KEY ---
 console.log('🔍 DEBUG: process.env.OPENAI_API_KEY:',
   process.env.OPENAI_API_KEY ? '[OK]' : '[NO DEFINIDA]');
 console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
@@ -18,39 +19,31 @@ const app = express();
 
 // --- Comprobar variable de entorno ---
 if (!process.env.OPENAI_API_KEY) {
-  console.error('❌ ERROR: La variable OPENAI_API_KEY no está definida.');
+  console.error('❌ ERROR: La variable OPENAI_API_KEY no está definida. Revisa tu configuración en Railway.');
   process.exit(1);
 }
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-// --- CORS: permitir frontend deployado en GitHub Pages y Railway ---
-const allowedOrigins = [
-  'https://tucasaenafrica-africa.up.railway.app',
-  'https://ancare2.github.io'
-];
+console.log('🔑 OPENAI_API_KEY está definida ✅');
 
+// --- CORS: permitir GitHub Pages y tu dominio deployado ---
 app.use(cors({
-  origin: function(origin, callback) {
-    // permitir requests sin origin (p. ej. Postman)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `⚠️ CORS: origen (${origin}) no permitido.`;
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
+  origin: ['https://ancare2.github.io', 'https://tucasaenafrica-africa.up.railway.app'],
   methods: ['GET','POST','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization','x-api-key']
 }));
 
-// Asegurar que OPTIONS no falle
+// --- Manejar preflight OPTIONS ---
 app.options('*', cors());
 
 app.use(bodyParser.json());
 
 // --- Helper para enviar prompt a OpenAI ---
 async function fetchOpenAI(prompt) {
+  console.log('➡️ Enviando prompt a OpenAI (truncado a 500 chars):');
+  console.log(prompt.slice(0, 500) + (prompt.length > 500 ? '... [truncado]' : ''));
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -67,6 +60,8 @@ async function fetchOpenAI(prompt) {
     })
   });
 
+  console.log('Status OpenAI:', response.status);
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error('❌ Error del API OpenAI:', errorText);
@@ -79,6 +74,8 @@ async function fetchOpenAI(prompt) {
 
 // --- Ruta POST ---
 app.post('/api/generate', async (req, res) => {
+  console.log('➡️ Nueva petición a /api/generate');
+
   const { prompt, datos } = req.body;
   if (!prompt || !Array.isArray(datos) || datos.length === 0) {
     return res.status(400).json({ text: '❌ Prompt y datos son obligatorios.' });
@@ -98,7 +95,7 @@ app.post('/api/generate', async (req, res) => {
       resúmenesParciales.push(resumen);
     }
 
-    const resumenFinalPrompt = `Combina estos resúmenes parciales en un resumen global único y profesional:\n${JSON.stringify(resúmenesParciales)}`;
+    const resumenFinalPrompt = `Combina estos resúmenes parciales en un resumen global único, coherente y profesional:\n${JSON.stringify(resúmenesParciales)}`;
     const resumenGlobal = await fetchOpenAI(resumenFinalPrompt);
 
     if (!resumenGlobal) {
@@ -106,7 +103,6 @@ app.post('/api/generate', async (req, res) => {
     }
 
     res.json({ text: resumenGlobal });
-
   } catch (err) {
     console.error('❌ Error en la generación:', err);
     res.status(500).json({ text: '❌ Error al conectar con la IA.' });
@@ -116,6 +112,8 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`));
+
+
 
 
 
