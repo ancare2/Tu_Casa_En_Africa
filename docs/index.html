@@ -914,7 +914,7 @@ if (rango !== 'todos') {
       document.getElementById('textoDiario').textContent = json.text || 'No se recibió respuesta de la IA.';
     } catch (e) {
       console.error('Error generando el diario:', e);
-      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario. Se necesita introducir más dinero para poder continuar generando diarios.';
+      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario.';
     }
   });
 
@@ -1216,13 +1216,13 @@ tablaBody.addEventListener('click', (e) => {
 
 // --- Consultar IA ---
 
-const consultarIABtn = document.getElementById('consultarIA');
+  const consultarIABtn = document.getElementById('consultarIA');
 
-if (consultarIABtn) {
-  consultarIABtn.addEventListener('click', abrirConsultaIA);
-}
+  if (consultarIABtn) {
+    consultarIABtn.addEventListener('click', abrirConsultaIA);
+  }
 
-function abrirConsultaIA() {
+  function abrirConsultaIA() {
   // Evitar múltiples modales
   if (document.getElementById('modalConsultaIA')) return;
 
@@ -1245,7 +1245,7 @@ function abrirConsultaIA() {
       <textarea id="preguntaIA" placeholder="Haz una pregunta sobre el Excel..." rows="4" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px;"></textarea>
       <button id="enviarPregunta" style="padding: 10px 20px; border: none; background: #007bff; color: white; border-radius: 6px; cursor: pointer;">Enviar</button>
       <div id="respuestaIA" style="margin-top: 20px; white-space: pre-wrap;"></div>
-      <button id="cerrarIA" style="margin-top: 20px; background: transparent; border: none; color: #555; cursor: pointer;">Cerrar</button>
+      <button onclick="document.getElementById('modalConsultaIA').remove()" style="margin-top: 20px; background: transparent; border: none; color: #555; cursor: pointer;">Cerrar</button>
     </div>
   `;
 
@@ -1269,20 +1269,58 @@ function abrirConsultaIA() {
 
   cargarDatosDesdeGoogleSheet();
 
-  // --- Mensaje de “no hay saldo” ---
-  document.getElementById('enviarPregunta').onclick = () => {
-    document.getElementById('respuestaIA').textContent = '❌ Actualmente no hay saldo disponible para consultar la IA. Por favor, recarga para continuar.';
+
+      // Enviar consulta
+  document.getElementById('enviarPregunta').onclick = async () => {
+    const pregunta = document.getElementById('preguntaIA').value.trim();
+    if (!pregunta) return alert('Escribe una pregunta');
+
+    document.getElementById('respuestaIA').textContent = '⏳ Consultando...';
+
+        // Datos a usar: si hay datos Excel, usar esos, si no, usar tablaBody (tu código original)
+    let datosParaIA;
+    if (datosExcel.length > 0) {
+      datosParaIA = datosExcel;
+    } else {
+      datosParaIA = Array.from(tablaBody.children).map(tr => {
+        const obj = {};
+        campos.forEach(c => {
+          const celda = tr.querySelector(`[data-field="${c}"]`);
+          obj[c] = celda ? celda.textContent.trim() : '';
+        });
+        return obj;
+      });
+     }
+
+    try {
+      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+         prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
+        })
+      });
+      const json = await resp.json();
+    
+      let respuesta = json.text || 'No se recibió respuesta.';
+      respuesta = respuesta.replace(/\*\*(.*?)\*\*/g, '$1');
+      document.getElementById('respuestaIA').textContent = respuesta;
+
+    } catch (e) {
+      document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
+    }
   };
 
-  // Cerrar modal
-  document.getElementById('cerrarIA').onclick = () => {
+    document.getElementById('cerrarIA').onclick = () => {
     modal.remove();
-  };
-}
+      };
+    }
 
-actualizarEstadoBotones();
 
+
+  actualizarEstadoBotones();
 </script>
+
 
 
 
