@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import fetch from 'node-fetch';
-import dotenv from 'dotenv'; // ⚠️ necesario
+import dotenv from 'dotenv';
 
 // --- Cargar variables de entorno solo en desarrollo ---
 if (process.env.NODE_ENV !== 'production') {
@@ -10,7 +10,6 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('✅ Variables cargadas desde .env');
 }
 
-// --- DEBUG: imprimir variable OPENAI_API_KEY ---
 console.log('🔍 DEBUG: process.env.OPENAI_API_KEY:',
   process.env.OPENAI_API_KEY ? '[OK]' : '[NO DEFINIDA]');
 console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
@@ -19,16 +18,13 @@ const app = express();
 
 // --- Comprobar variable de entorno ---
 if (!process.env.OPENAI_API_KEY) {
-  console.error('❌ ERROR: La variable OPENAI_API_KEY no está definida. Revisa tu configuración en Railway.');
-  process.exit(1); // Detiene la app si no hay API key
+  console.error('❌ ERROR: La variable OPENAI_API_KEY no está definida.');
+  process.exit(1);
 }
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
 
-console.log('🔑 OPENAI_API_KEY está definida ✅');
-
-// --- CORS: permitir frontend deployado y GitHub Pages ---
+// --- CORS: permitir frontend deployado en GitHub Pages y Railway ---
 const allowedOrigins = [
   'https://tucasaenafrica-africa.up.railway.app',
   'https://ancare2.github.io'
@@ -36,22 +32,25 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin) return callback(null, true); // Postman, curl, etc.
+    // permitir requests sin origin (p. ej. Postman)
+    if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = `⚠️ CORS: origen (${origin}) no permitido.`;
       return callback(new Error(msg), false);
     }
     return callback(null, true);
-  }
+  },
+  methods: ['GET','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','x-api-key']
 }));
+
+// Asegurar que OPTIONS no falle
+app.options('*', cors());
 
 app.use(bodyParser.json());
 
 // --- Helper para enviar prompt a OpenAI ---
 async function fetchOpenAI(prompt) {
-  console.log('➡️ Enviando prompt a OpenAI (truncado a 500 chars):');
-  console.log(prompt.slice(0, 500) + (prompt.length > 500 ? '... [truncado]' : ''));
-
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -68,8 +67,6 @@ async function fetchOpenAI(prompt) {
     })
   });
 
-  console.log('Status OpenAI:', response.status);
-
   if (!response.ok) {
     const errorText = await response.text();
     console.error('❌ Error del API OpenAI:', errorText);
@@ -77,27 +74,13 @@ async function fetchOpenAI(prompt) {
   }
 
   const data = await response.json();
-  console.log('Respuesta OpenAI (truncada a 500 chars):', JSON.stringify(data).slice(0, 500));
-
   return data?.choices?.[0]?.message?.content || null;
 }
 
 // --- Ruta POST ---
 app.post('/api/generate', async (req, res) => {
-  console.log('➡️ Nueva petición a /api/generate');
-
-  if (SECRET_TOKEN) {
-    const token = req.headers['x-api-key'];
-    console.log('Token recibido:', token);
-    if (token !== SECRET_TOKEN) {
-      console.error('❌ Token inválido');
-      return res.status(401).json({ text: '❌ Acceso denegado. Token inválido.' });
-    }
-  }
-
   const { prompt, datos } = req.body;
   if (!prompt || !Array.isArray(datos) || datos.length === 0) {
-    console.error('❌ Prompt vacío o datos no válidos');
     return res.status(400).json({ text: '❌ Prompt y datos son obligatorios.' });
   }
 
@@ -110,27 +93,18 @@ app.post('/api/generate', async (req, res) => {
 
     const resúmenesParciales = [];
     for (let i = 0; i < batches.length; i++) {
-      console.log(`➡️ Procesando lote ${i+1}/${batches.length} (registros: ${batches[i].length})`);
       const batchPrompt = `${prompt}\n\nDatos del lote ${i+1}:\n${JSON.stringify(batches[i])}`;
       const resumen = await fetchOpenAI(batchPrompt);
-      if (!resumen) {
-        console.error(`⚠️ Lote ${i+1} sin respuesta`);
-      } else {
-        console.log(`✅ Lote ${i+1} procesado`);
-      }
       resúmenesParciales.push(resumen);
     }
 
-    console.log('➡️ Combinando resúmenes parciales...');
-    const resumenFinalPrompt = `Combina estos resúmenes parciales en un resumen global único, coherente y profesional:\n${JSON.stringify(resúmenesParciales)}`;
+    const resumenFinalPrompt = `Combina estos resúmenes parciales en un resumen global único y profesional:\n${JSON.stringify(resúmenesParciales)}`;
     const resumenGlobal = await fetchOpenAI(resumenFinalPrompt);
 
     if (!resumenGlobal) {
-      console.error('⚠️ No se recibió resumen global');
       return res.status(500).json({ text: '⚠️ No se recibió respuesta válida de la IA.' });
     }
 
-    console.log('✅ Resumen global generado');
     res.json({ text: resumenGlobal });
 
   } catch (err) {
@@ -142,6 +116,7 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`));
+
 
 
 
