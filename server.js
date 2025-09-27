@@ -7,14 +7,36 @@ import fetch from 'node-fetch';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// --- CORS: solo permite tu frontend en producción y localhost en desarrollo ---
+const allowedOrigins = [
+  'http://localhost:5500', // frontend local
+  'https://tucasaenafrica-africa.up.railway.app' // frontend deployado
+];
+app.use(cors({
+  origin: allowedOrigins
+}));
+
 app.use(bodyParser.json());
 
+// --- Variables de entorno ---
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
 
+// --- Ruta POST para generar texto ---
 app.post('/api/generate', async (req, res) => {
+  // Validar token si se configuró
+  if (SECRET_TOKEN) {
+    const token = req.headers['x-api-key'];
+    if (token !== SECRET_TOKEN) {
+      return res.status(401).json({ text: '❌ Acceso denegado. Token inválido.' });
+    }
+  }
+
   const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ text: '❌ El campo "prompt" es obligatorio.' });
+  if (!prompt) {
+    return res.status(400).json({ text: '❌ El campo "prompt" es obligatorio.' });
+  }
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -24,7 +46,7 @@ app.post('/api/generate', async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "gpt-3.5-turbo", // o gpt-4 si tienes acceso
         messages: [
           { role: "system", content: "Eres un asistente que ayuda a analizar registros médicos de pacientes." },
           { role: "user", content: prompt }
@@ -33,11 +55,22 @@ app.post('/api/generate', async (req, res) => {
       })
     });
 
+    // Mejor manejo de errores
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error del API OpenAI:', errorText);
+      return res.status(response.status).json({ text: `❌ Error del API OpenAI: ${response.status}` });
+    }
+
     const data = await response.json();
     const text = data?.choices?.[0]?.message?.content;
 
-    if (text) res.json({ text });
-    else res.status(500).json({ text: '⚠️ No se recibió respuesta válida de la IA.' });
+    if (text) {
+      res.json({ text });
+    } else {
+      console.error('⚠️ Respuesta inesperada de OpenAI:', data);
+      res.status(500).json({ text: '⚠️ No se recibió respuesta válida de la IA.' });
+    }
 
   } catch (err) {
     console.error('❌ Error al conectar con OpenAI:', err);
@@ -47,7 +80,6 @@ app.post('/api/generate', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
-
 
 
 
