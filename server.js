@@ -11,8 +11,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // --- DEBUG ---
-console.log('🔍 DEBUG: process.env.OPENAI_API_KEY:',
-  process.env.OPENAI_API_KEY ? '[OK]' : '[NO DEFINIDA]');
+console.log('🔍 DEBUG: process.env.OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '[OK]' : '[NO DEFINIDA]');
 console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
 
 const app = express();
@@ -22,15 +21,26 @@ if (!process.env.OPENAI_API_KEY) {
   console.error('❌ ERROR: La variable OPENAI_API_KEY no está definida. Revisa tu configuración en Railway.');
   process.exit(1);
 }
-
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
 console.log('🔑 OPENAI_API_KEY está definida ✅');
 
 // --- CORS: permitir GitHub Pages y tu dominio deployado ---
+const allowedOrigins = [
+  'https://ancare2.github.io',
+  'https://tucasaenafrica-africa.up.railway.app'
+];
+
 app.use(cors({
-  origin: ['https://ancare2.github.io', 'https://tucasaenafrica-africa.up.railway.app'], 
-  methods: ['GET','POST','OPTIONS'],
+  origin: function(origin, callback) {
+    // permitir solicitudes sin origin (ej. Postman, server-side)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `❌ El CORS para este origin no está permitido: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization','x-api-key']
 }));
 
@@ -110,7 +120,6 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`));
-
 
 
 
