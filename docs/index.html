@@ -1302,16 +1302,14 @@ function abrirConsultaIA() {
       // Leer siempre el JSON, aunque sea status 402 o error
       const json = await resp.json();
 
-      // Mostrar el texto directamente
-      let texto = json.text || 'No se recibió respuesta de la IA.';
-      texto = texto.replace(/\*\*(.*?)\*\*/g, '$1'); // quitar ** negritas
-      respuestaDiv.textContent = texto;
-  
+      document.getElementById('respuestaIA').textContent = json.text || 'No se recibió respuesta de la IA.';
     } catch (e) {
-      console.error('Error al conectar con la IA:', e);
-      respuestaDiv.textContent = '❌ Error: se necesita introducir más crédito para continuar preguntando.';
+      console.error('Error generando respuesta:', e);
+      document.getElementById('respuestaIA').textContent = '❌ Error al generar respuesta. Se necesita introducir más crédito para continuar.';
     }
-  };
+  });
+
+
 }
 
   
