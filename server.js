@@ -14,6 +14,7 @@ if (process.env.NODE_ENV !== 'production') {
 console.log('🔍 DEBUG: process.env.OPENAI_API_KEY:',
   process.env.OPENAI_API_KEY ? '[OK]' : '[NO DEFINIDA]');
   console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
+  console.log('🔍 Variables de entorno:', process.env);
 
 const app = express();
 
@@ -129,6 +130,7 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
+
 
 
 
