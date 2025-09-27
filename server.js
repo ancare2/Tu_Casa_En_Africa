@@ -5,13 +5,28 @@ import bodyParser from 'body-parser';
 import fetch from 'node-fetch';
 
 dotenv.config();
+
 const app = express();
+
+// Configuración CORS
 app.use(cors());
 app.use(bodyParser.json());
 
+// Tu clave de OpenAI (guárdala en Railway como OPENAI_API_KEY)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
+// Opcional: token secreto para controlar acceso desde frontend
+const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
+
 app.post('/api/generate', async (req, res) => {
+  // Validar token (si lo configuraste)
+  if (SECRET_TOKEN) {
+    const token = req.headers['x-api-key'];
+    if (token !== SECRET_TOKEN) {
+      return res.status(401).json({ text: '❌ Acceso denegado. Token inválido.' });
+    }
+  }
+
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ text: '❌ El campo "prompt" es obligatorio.' });
 
@@ -23,29 +38,33 @@ app.post('/api/generate', async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "gpt-3.5-turbo", // o gpt-4 si tienes acceso
         messages: [
           { role: "system", content: "Eres un asistente que ayuda a analizar registros médicos de pacientes." },
           { role: "user", content: prompt }
         ],
-        max_tokens: 512
+        max_tokens: 800 // evita peticiones demasiado grandes
       })
     });
 
     const data = await response.json();
     const text = data?.choices?.[0]?.message?.content;
 
-    if (text) res.json({ text });
-    else res.status(500).json({ text: '⚠️ No se recibió respuesta válida de la IA.' });
+    if (text) {
+      res.json({ text });
+    } else {
+      res.status(500).json({ text: '⚠️ No se recibió respuesta válida de la IA.' });
+    }
 
   } catch (err) {
-    console.error(err);
+    console.error('❌ Error al conectar con OpenAI:', err);
     res.status(500).json({ text: '❌ Error al conectar con la IA.' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor escuchando en http://localhost:${PORT}`));
+
 
 
 
