@@ -63,7 +63,7 @@ def generate():
         if response.status_code != 200:
             print("❌ Error en la respuesta del API:", response.text)
             return jsonify({
-                "text": f"❌ Error del API: {response.status_code}"
+                "text": f"❌ Error: se necesita introducir más crédito para continuar preguntando."
             }), response.status_code
 
         data = response.json()
@@ -87,6 +87,7 @@ if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 3000))
     print(f"✅ Servidor escuchando en http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT)
+
 
 
 
