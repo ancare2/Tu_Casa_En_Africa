@@ -17,48 +17,26 @@ const app = express();
 
 // --- Comprobar API Key ---
 if (!process.env.OPENAI_API_KEY) {
-  console.error('❌ ERROR: La variable OPENAI_API_KEY no está definida en Railway.');
+  throw new Error('❌ ERROR: La variable OPENAI_API_KEY no está definida en Railway.');
 }
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
-
-// --- CORS manual con logs ---
-const allowedOrigins = [
-  'https://tucasaenafrica-africa.up.railway.app',
-  'https://ancare2.github.io'
-];
-
-app.use((req, res, next) => {
-  console.log('🌐 Nueva request:', req.method, 'Origin:', req.headers.origin, 'URL:', req.originalUrl);
-
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    console.log('✅ Origin permitido:', origin);
-  } else {
-    console.log('⚠️ Origin NO permitido:', origin);
-  }
-
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-api-key');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-  if (req.method === 'OPTIONS') {
-    console.log('🔹 Respondiendo preflight OPTIONS');
-    return res.sendStatus(204);
-  }
-
-  next();
-});
 
 // --- Body parser ---
 app.use(bodyParser.json());
 
-// --- Helper para OpenAI ---
-async function fetchOpenAI(prompt) {
-  console.log('➡️ Enviando prompt a OpenAI (truncado a 500 chars):', prompt.slice(0, 500));
+// --- Middleware CORS para pruebas ---
+app.use((req, res, next) => {
+  // Permitir todo temporalmente para pruebas desde GitHub Pages
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-api-key');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
+// --- Helper para llamar OpenAI ---
+async function fetchOpenAI(prompt) {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -75,37 +53,22 @@ async function fetchOpenAI(prompt) {
     })
   });
 
-  console.log('Status OpenAI:', response.status);
-
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('❌ Error OpenAI:', errorText);
-    throw new Error(`OpenAI Error: ${response.status}`);
+    throw new Error(`OpenAI Error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
-  console.log('🔹 Respuesta OpenAI (truncada 500 chars):', JSON.stringify(data).slice(0, 500));
   return data?.choices?.[0]?.message?.content || null;
 }
 
-// --- Ruta POST /api/generate ---
-app.post('/api/generate', async (req, res) => {
-  console.log('➡️ POST /api/generate recibida');
-  console.log('Headers:', req.headers);
+// --- Ruta proxy para GitHub Pages ---
+app.post('/api/proxy', async (req, res) => {
+  console.log('➡️ POST /api/proxy recibida');
   console.log('Body:', req.body);
-
-  if (SECRET_TOKEN) {
-    const token = req.headers['x-api-key'];
-    console.log('Token recibido:', token);
-    if (token !== SECRET_TOKEN) {
-      console.error('❌ Token inválido');
-      return res.status(401).json({ text: '❌ Acceso denegado. Token inválido.' });
-    }
-  }
 
   const { prompt, datos } = req.body;
   if (!prompt || !Array.isArray(datos) || datos.length === 0) {
-    console.error('❌ Prompt vacío o datos no válidos');
     return res.status(400).json({ text: '❌ Prompt y datos son obligatorios.' });
   }
 
@@ -118,7 +81,6 @@ app.post('/api/generate', async (req, res) => {
 
     const resúmenesParciales = [];
     for (let i = 0; i < batches.length; i++) {
-      console.log(`➡️ Procesando lote ${i + 1}/${batches.length} (registros: ${batches[i].length})`);
       const batchPrompt = `${prompt}\n\nDatos del lote ${i + 1}:\n${JSON.stringify(batches[i])}`;
       const resumen = await fetchOpenAI(batchPrompt);
       resúmenesParciales.push(resumen || '');
@@ -137,6 +99,8 @@ app.post('/api/generate', async (req, res) => {
 // --- Puerto Railway ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`));
+
+
 
 
 
