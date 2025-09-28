@@ -911,7 +911,7 @@ if (rango !== 'todos') {
 
       console.log('Respuesta de la API:', json);
 
-      document.getElementById('textoDiario').textContent = json.text || 'No se recibió respuesta de la IA.';
+      document.getElementById('textoDiario').textContent = json.text || 'No se recibió respuesta de la IA. Necesita introducir más crédito para poder continuar.';
     } catch (e) {
       console.error('Error generando el diario:', e);
       document.getElementById('textoDiario').textContent = '❌ Error al generar el diario. Se necesita introducir más crédito para poder continuar.';
@@ -1302,7 +1302,7 @@ tablaBody.addEventListener('click', (e) => {
       });
       const json = await resp.json();
     
-      let respuesta = json.text || 'No se recibió respuesta.';
+      let respuesta = json.text || 'No se recibió respuesta. Necesita introducir más crédito para poder continuar.';
       respuesta = respuesta.replace(/\*\*(.*?)\*\*/g, '$1');
       document.getElementById('respuestaIA').textContent = respuesta;
 
@@ -1320,6 +1320,7 @@ tablaBody.addEventListener('click', (e) => {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
