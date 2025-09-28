@@ -16,16 +16,20 @@ export default async function handler(req, res) {
 
   const { prompt, datos } = req.body;
 
-  if (!prompt || !Array.isArray(datos)) {
-    return res.status(400).json({ text: 'Prompt y datos son obligatorios' });
+  if (!prompt) {
+    return res.status(400).json({ text: 'Prompt es obligatorio' });
   }
 
   try {
-    // Aquí llamamos a tu backend en Railway o directamente a OpenAI
+    // Si no hay datos, solo enviamos prompt a OpenAI
+    const bodyToSend = datos
+      ? { prompt, datos }
+      : { prompt };
+
     const response = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, datos })
+      body: JSON.stringify(bodyToSend)
     });
 
     const data = await response.json();
