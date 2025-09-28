@@ -613,14 +613,37 @@
     });
   }
 
-  // --- Descargar Excel ---
-if (descargarExcelBtn) {
-  descargarExcelBtn.addEventListener('click', () => {
-    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=xlsx";
-    window.open(url, "_blank");
-  });
-}
-
+// --- Descargar Excel ---
+  if (descargarExcelBtn) {
+    descargarExcelBtn.addEventListener('click', () => {
+      const wb = XLSX.utils.book_new();
+      let data = [];
+      const header = campos.map(c => {
+        switch(c) {
+          case 'nombre': return 'Nombre y Apellidos';
+          case 'edad': return 'Edad';
+          case 'pueblo': return 'Pueblo';
+          case 'motivo': return 'Motivo';
+          case 'diagnostico': return 'Diagnóstico';
+          case 'tratamiento': return 'Tratamiento';
+          case 'seguimiento': return '¿Seguimiento?';
+          default: return c;
+        }
+      });
+      data.push(header);
+      Array.from(tablaBody.querySelectorAll('tr.registro')).forEach(tr => {
+        const fila = [];
+        campos.forEach(campo => {
+          const celda = tr.querySelector(`[data-field="${campo}"]`);
+          fila.push(celda ? celda.textContent : '');
+        });
+        data.push(fila);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, "Registros");
+      XLSX.writeFile(wb, "Registros.xlsx");
+    });
+  }
 
   // --- Eliminar todos los registros ---
   eliminarTodosBtn.addEventListener('click', () => {
@@ -763,6 +786,7 @@ if (descargarExcelBtn) {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
