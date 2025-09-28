@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import bodyParser from 'body-parser';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
@@ -29,27 +28,30 @@ const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
 
 console.log('🔑 OPENAI_API_KEY está definida ✅');
 
-// --- CORS: permitir backend y frontend ---
+// --- CORS manual (maneja preflight OPTIONS) ---
 const allowedOrigins = [
   'https://tucasaenafrica-africa.up.railway.app',
   'https://ancare2.github.io'
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('❌ CORS bloqueado para este origen'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
-}));
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-api-key');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-// --- Manejo de preflight requests (OPTIONS) ---
-app.options('*', cors());
+  // Preflight request
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
 
+  next();
+});
+
+// --- Body parser ---
 app.use(bodyParser.json());
 
 // --- Helper para enviar prompt a OpenAI ---
@@ -95,7 +97,7 @@ async function fetchOpenAI(prompt) {
   return data?.choices?.[0]?.message?.content || null;
 }
 
-// --- Ruta POST ---
+// --- Ruta POST /api/generate ---
 app.post('/api/generate', async (req, res) => {
   console.log('➡️ Nueva petición a /api/generate');
 
@@ -151,10 +153,11 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
-// --- Puerto (usar el que da Railway) ---
+// --- Puerto Railway ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () =>
   console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`)
 );
+
 
 
