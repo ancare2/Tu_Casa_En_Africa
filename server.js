@@ -53,12 +53,12 @@ app.post('/api/generate', async (req, res) => {
       res.json({ text });
     } else {
       console.error('⚠️ Respuesta inesperada de OpenAI:', data);
-      res.status(500).json({ text: '⚠️ No se recibió una respuesta válida de la IA.' });
+      res.status(500).json({ text: '⚠️ No se recibió una respuesta válida de la IA. Se necesita introducir más crédito para continuar.' });
     }
 
   } catch (err) {
     console.error('❌ Error al consultar OpenAI:', err);
-    res.status(500).json({ text: '❌ Error al conectar con la IA.' });
+    res.status(500).json({ text: '❌ Error al conectar con la IA. Se necesita introducir más crédito para continuar.' });
   }
 });
 
@@ -67,5 +67,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor escuchando en http://localhost:${PORT}`);
 });
+
 
 
