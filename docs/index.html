@@ -897,7 +897,7 @@ if (rango !== 'todos') {
       `;
       console.log('Enviando prompt a la API:', prompt);
 
-      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/proxy', {
+      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
@@ -1293,7 +1293,7 @@ tablaBody.addEventListener('click', (e) => {
      }
 
     try {
-      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/proxy', {
+      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({
@@ -1320,6 +1320,7 @@ tablaBody.addEventListener('click', (e) => {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
