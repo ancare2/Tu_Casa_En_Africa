@@ -301,7 +301,6 @@
   const siguientePacienteBtn = document.getElementById('siguientePaciente');
   const guardarTodoBtn = document.getElementById('guardarTodo');
 
-
   const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfglAdf-IhYnrfNNLYpkKz93eF9F9d080m7u8gjCepP2lbkxg/formResponse';
   const FORM_FIELD_MAPPING = {
     nombre: 'entry.1139347399',
@@ -745,181 +744,6 @@ function mostrarOpcionesPueblo(botonPueblo) {
   }
 
   
-if (generarDiarioBtn) {
-  generarDiarioBtn.addEventListener('click', async () => {
-    if (!datosExcel || datosExcel.length === 0) {
-      alert('No hay registros cargados para generar el diario. Por favor, carga los datos primero.');
-      return;
-    }
-
-    const rango = await pedirRangoFechas();
-    if (rango === null) {
-      // Usuario canceló
-      return;
-    }
-
-    let datosFiltrados = datosExcel;
-
-
-
-if (rango !== 'todos') {
-  datosFiltrados = datosExcel.filter(registro => {
-    const marcaTemporal = registro['Marca temporal'];
-
-    if (typeof marcaTemporal !== 'string' || !marcaTemporal.trim()) {
-      console.log('Marca temporal inválida o vacía:', marcaTemporal);
-      return false;
-    }
-
-    const [fechaStr] = marcaTemporal.split(' ');
-    const [dd, mm, yyyy] = fechaStr.split('/');
-
-    if (!dd || !mm || !yyyy) {
-      console.log('Fecha mal formada:', fechaStr);
-      return false;
-    }
-
-    const fechaRegistro = new Date(`${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}T00:00:00`);
-
-    if (isNaN(fechaRegistro.getTime())) {
-      console.log('FechaRegistro inválida:', fechaRegistro);
-      return false;
-    }
-
-    const fechaDesde = new Date(rango.desde);
-    fechaDesde.setHours(0, 0, 0, 0);
-    const fechaHasta = new Date(rango.hasta);
-    fechaHasta.setHours(23, 59, 59, 999);
-
-    console.log('Fecha registro:', fechaRegistro);
-    console.log('Rango desde:', fechaDesde);
-    console.log('Rango hasta:', fechaHasta);
-
-    const dentroRango = fechaRegistro >= fechaDesde && fechaRegistro <= fechaHasta;
-    console.log('¿Dentro de rango?', dentroRango);
-
-    return dentroRango;
-  });
-}
-
-
-    // Crear modal para mostrar progreso y resultado
-    const modal = document.createElement('div');
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-    modal.style.display = 'flex';
-    modal.style.alignItems = 'center';
-    modal.style.justifyContent = 'center';
-    modal.style.zIndex = '1000';
-
-    modal.innerHTML = `
-    <div style="background: white; padding: 20px; border-radius: 8px; width: 600px; max-height: 80%; overflow-y: auto;">
-      <h2>📝 Diario de campo</h2>
-      <div id="textoDiario" style="white-space: pre-wrap; margin-top: 15px;">⏳ Generando...</div>
-      <textarea id="editorDiario" style="display:none; width: 100%; height: 200px; margin-top: 10px;"></textarea>
-      <div style="margin-top: 15px;">
-        <button id="btnEditar" style="margin-right: 10px;">Editar diario</button>
-        <button id="btnDescargar" style="margin-right: 10px;">Descargar TXT</button>
-        <button id="btnCancelar" style="background: #ccc;">Cancelar</button>
-      </div>
-    </div>
-  `;
-
-    document.body.appendChild(modal);
-
-
-    const textoDiario = modal.querySelector('#textoDiario');
-    const editorDiario = modal.querySelector('#editorDiario');
-    const btnEditar = modal.querySelector('#btnEditar');
-    const btnDescargar = modal.querySelector('#btnDescargar');
-    const btnCancelar = modal.querySelector('#btnCancelar');
-
-    btnCancelar.onclick = () => {
-      modal.remove();
-    };
-
-    btnEditar.onclick = () => {
-      if (editorDiario.style.display === 'none') {
-        // Mostrar textarea con contenido para editar
-        editorDiario.value = textoDiario.textContent;
-        editorDiario.style.display = 'block';
-        textoDiario.style.display = 'none';
-        btnEditar.textContent = 'Guardar cambios';
-      } else {
-        // Guardar cambios
-        textoDiario.textContent = editorDiario.value;
-        editorDiario.style.display = 'none';
-        textoDiario.style.display = 'block';
-        btnEditar.textContent = 'Editar diario';
-      }
-    };
-
-    btnDescargar.onclick = () => {
-      const contenido = editorDiario.style.display === 'block' ? editorDiario.value : textoDiario.textContent;
-      const blob = new Blob([contenido], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'diario_de_campo.txt';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    };
-    
-  try {
-      const prompt = `
-      Analiza exclusivamente la información contenida en los siguientes registros médicos (en formato JSON).
-      
-      Objetivo:
-      Generar un resumen general breve y claro del conjunto de datos proporcionados.
-      
-      Instrucciones:
-      1. **Excluir nombres propios.**
-      2. **Usar únicamente la información disponible en los registros.**
-      3. Redactar en prosa fluida y profesional, evitando listas.
-      4. Extensión breve pero suficiente para abarcar las observaciones principales.
-      5. **Nunca resaltes nada en negrita**.
-
-      **Estructura obligatoria** a seguir:
-      - Párrafo 1: Introducción breve y atractiva que presente el conjunto de datos de forma general, utilizando exclusivamente la información disponible.
-      - Párrafo 2: Resumen breve integrado que combine observaciones, motivos de consulta, diagnósticos y seguimientos de forma coherente, sin dividir en secciones.
-      - Párrafo 3: Valoración subjetiva/opinión personal de los registros.
-
-      Datos para analizar:
-      ${JSON.stringify(datosExcel)}
-      `;
-      console.log('Enviando prompt a la API:', prompt);
-
-      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
-      });
-
-      if (!resp.ok) {
-        throw new Error(`Error en la respuesta: ${resp.status} ${resp.statusText}`);
-      }
-
-      const json = await resp.json();
-
-      console.log('Respuesta de la API:', json);
-
-      document.getElementById('textoDiario').textContent = json.text || 'No se recibió respuesta de la IA.';
-    } catch (e) {
-      console.error('Error generando el diario:', e);
-      document.getElementById('textoDiario').textContent = '❌ Error al generar el diario.';
-    }
-  });
-
-} else {
-  console.error('No se encontró el botón generarDiarioBtn');
-}
-
 
 
 
@@ -1011,7 +835,7 @@ if (rango !== 'todos') {
           }
         }
     
-        alert('✅ Todos los registros de la tabla se han enviado en orden');
+        alert('Se enviaron los registros.');
     
         // Limpiar selección de campo
         campoSeleccionado = null;
@@ -1212,112 +1036,26 @@ tablaBody.addEventListener('click', (e) => {
   };
 }
 
-// --- Consultar IA ---
-
-  const consultarIABtn = document.getElementById('consultarIA');
-
-  if (consultarIABtn) {
-    consultarIABtn.addEventListener('click', abrirConsultaIA);
-  }
-
-  function abrirConsultaIA() {
-  // Evitar múltiples modales
-  if (document.getElementById('modalConsultaIA')) return;
-
-  const modal = document.createElement('div');
-  modal.id = 'modalConsultaIA';
-  modal.style.position = 'fixed';
-  modal.style.top = '0';
-  modal.style.left = '0';
-  modal.style.width = '100%';
-  modal.style.height = '100%';
-  modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-  modal.style.display = 'flex';
-  modal.style.alignItems = 'center';
-  modal.style.justifyContent = 'center';
-  modal.style.zIndex = '1000';
-
-  modal.innerHTML = `
-    <div style="background: white; padding: 30px; border-radius: 10px; width: 600px; max-height: 80%; overflow-y: auto; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
-      <h2>Consulta IA</h2>
-      <textarea id="preguntaIA" placeholder="Haz una pregunta sobre el Excel..." rows="4" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px;"></textarea>
-      <button id="enviarPregunta" style="padding: 10px 20px; border: none; background: #007bff; color: white; border-radius: 6px; cursor: pointer;">Enviar</button>
-      <div id="respuestaIA" style="margin-top: 20px; white-space: pre-wrap;"></div>
-      <button onclick="document.getElementById('modalConsultaIA').remove()" style="margin-top: 20px; background: transparent; border: none; color: #555; cursor: pointer;">Cerrar</button>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  async function cargarDatosDesdeGoogleSheet() {
-    const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4bGXwxxSijeccznOH3IuAj-2iecQcoLtUta_dAjTPo2V-MQX2abUUDWCLzOrvMFacQEH5wq5EOaKW/pub?gid=1393541842&single=true&output=csv';
-
-    try {
-      const response = await fetch(urlCSV);
-      const csvText = await response.text();
-      const workbook = XLSX.read(csvText, { type: 'string' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      datosExcel = XLSX.utils.sheet_to_json(worksheet);
-    } catch (err) {
-      console.error('Error al cargar desde Google Sheets:', err);
-      alert('❌ Error al cargar los datos desde Google Sheets.');
-    }
-  }
-
-  cargarDatosDesdeGoogleSheet();
-
-
-      // Enviar consulta
-  document.getElementById('enviarPregunta').onclick = async () => {
-    const pregunta = document.getElementById('preguntaIA').value.trim();
-    if (!pregunta) return alert('Escribe una pregunta');
-
-    document.getElementById('respuestaIA').textContent = '⏳ Consultando...';
-
-        // Datos a usar: si hay datos Excel, usar esos, si no, usar tablaBody (tu código original)
-    let datosParaIA;
-    if (datosExcel.length > 0) {
-      datosParaIA = datosExcel;
-    } else {
-      datosParaIA = Array.from(tablaBody.children).map(tr => {
-        const obj = {};
-        campos.forEach(c => {
-          const celda = tr.querySelector(`[data-field="${c}"]`);
-          obj[c] = celda ? celda.textContent.trim() : '';
-        });
-        return obj;
-      });
-     }
-
-    try {
-      const resp = await fetch('https://tucasaenafrica-africa.up.railway.app/api/generate', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-         prompt: `${pregunta}\n\nDatos:\n${JSON.stringify(datosParaIA)}`
-        })
-      });
-      const json = await resp.json();
-    
-      let respuesta = json.text || 'No se recibió respuesta.';
-      respuesta = respuesta.replace(/\*\*(.*?)\*\*/g, '$1');
-      document.getElementById('respuestaIA').textContent = respuesta;
-
-    } catch (e) {
-      document.getElementById('respuestaIA').textContent = '❌ Error al conectar con la IA.';
-    }
-  };
-
-    document.getElementById('cerrarIA').onclick = () => {
-    modal.remove();
-      };
-    }
-
-
 
   actualizarEstadoBotones();
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
