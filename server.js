@@ -42,8 +42,13 @@ app.use(cors({
     } else {
       callback(new Error('❌ CORS bloqueado para este origen'));
     }
-  }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
 }));
+
+// --- Manejo de preflight requests (OPTIONS) ---
+app.options('*', cors());
 
 app.use(bodyParser.json());
 
@@ -151,6 +156,5 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () =>
   console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`)
 );
-
 
 
