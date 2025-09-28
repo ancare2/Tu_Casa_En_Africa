@@ -25,17 +25,16 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 // --- Body parser ---
 app.use(bodyParser.json());
 
-// --- Middleware CORS para pruebas ---
+// --- Middleware CORS para pruebas (permite todo temporalmente) ---
 app.use((req, res, next) => {
-  // Permitir todo temporalmente para pruebas desde GitHub Pages
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Temporal para GitHub Pages
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-api-key');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
-// --- Helper para llamar OpenAI ---
+// --- Helper para llamar a OpenAI ---
 async function fetchOpenAI(prompt) {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -99,8 +98,6 @@ app.post('/api/proxy', async (req, res) => {
 // --- Puerto Railway ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`));
-
-
 
 
 
