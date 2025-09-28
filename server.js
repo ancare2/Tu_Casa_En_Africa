@@ -16,16 +16,12 @@ console.log(
   process.env.OPENAI_API_KEY ? '[OK]' : '[NO DEFINIDA]'
 );
 console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
-console.log('🔍 Variables de entorno:', process.env);
 
 const app = express();
 
 // --- Comprobar variable de entorno ---
 if (!process.env.OPENAI_API_KEY) {
-  console.error(
-    '❌ ERROR: La variable OPENAI_API_KEY no está definida. Revisa tu configuración en Railway.'
-  );
-  process.exit(1);
+  throw new Error('❌ ERROR: La variable OPENAI_API_KEY no está definida en Railway.');
 }
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -33,9 +29,22 @@ const SECRET_TOKEN = process.env.SECRET_TOKEN || null;
 
 console.log('🔑 OPENAI_API_KEY está definida ✅');
 
-// --- CORS: solo frontend deployado ---
-const allowedOrigin = 'https://tucasaenafrica-africa.up.railway.app';
-app.use(cors({ origin: allowedOrigin }));
+// --- CORS: permitir backend y frontend ---
+const allowedOrigins = [
+  'https://tucasaenafrica-africa.up.railway.app',
+  'https://ancare2.github.io'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('❌ CORS bloqueado para este origen'));
+    }
+  }
+}));
+
 app.use(bodyParser.json());
 
 // --- Helper para enviar prompt a OpenAI ---
@@ -137,7 +146,11 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
-// --- Puerto ---
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`));
+// --- Puerto (usar el que da Railway) ---
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, '0.0.0.0', () =>
+  console.log(`✅ Servidor escuchando en http://0.0.0.0:${PORT}`)
+);
+
+
 
