@@ -194,10 +194,20 @@
     <button class="field-btn" data-field="edad">Edad</button>
     <button class="field-btn" data-field="pueblo">Pueblo</button>
     <button class="field-btn" data-field="motivo">Motivo</button>
+    <button class="field-btn" data-field="alergias">Alergias</button>
+    <button class="field-btn" data-field="vacunacion">Vacunación</button>
+    <button class="field-btn" data-field="medicamentos">Medicamentos</button>
+    <button class="field-btn" data-field="peso">Peso</button>
+    <button class="field-btn" data-field="temperatura">Temperatura</button>
+    <button class="field-btn" data-field="saturacion">Saturación</button>
+    <button class="field-btn" data-field="altura">Altura</button>
+    <button class="field-btn" data-field="frecuencia-cardiaca">Frecuencia Cardiaca</button>
+    <button class="field-btn" data-field="presion">Presión</button>
     <button class="field-btn" data-field="diagnostico">Diagnóstico</button>
     <button class="field-btn" data-field="tratamiento">Tratamiento</button>
     <button class="field-btn" data-field="seguimiento">¿Seguimiento?</button>
   </div>
+
 
   <div>
     <button id="startBtn" disabled>Empezar</button>
@@ -249,10 +259,19 @@
   <table id="tabla-registros" role="grid" aria-readonly="true">
     <thead>
       <tr>
-        <th scope="col">Nombre</th>
+        <th scope="col">Nombre y Apellidos</th>
         <th scope="col">Edad</th>
         <th scope="col">Pueblo</th>
         <th scope="col">Motivo</th>
+        <th scope="col">Alergias</th>
+        <th scope="col">Vacunación</th>
+        <th scope="col">Medicamentos</th>
+        <th scope="col">Peso</th>
+        <th scope="col">Temperatura</th>
+        <th scope="col">Saturación</th>
+        <th scope="col">Altura</th>
+        <th scope="col">Frecuencia Cardiaca</th>
+        <th scope="col">Presión</th>
         <th scope="col">Diagnóstico</th>
         <th scope="col">Tratamiento</th>
         <th scope="col">¿Seguimiento?</th>
@@ -261,6 +280,7 @@
     <tbody id="tablaBody" role="rowgroup"></tbody>
   </table>
 </div>
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
@@ -273,7 +293,7 @@
   let modoBorrado = false;
   let detenerManual = false;
 
-  const campos = ['nombre', 'edad', 'pueblo', 'motivo', 'diagnostico', 'tratamiento', 'seguimiento'];
+  const campos = ['nombre', 'edad', 'pueblo', 'motivo', 'alergias', 'vacunacion', 'medicamentos', 'peso', 'temperatura', 'saturacion', 'altura', 'frecuencia_cardiaca', 'presion', 'diagnostico', 'tratamiento', 'seguimiento'];
 
   // Referencias DOM
   const startBtn = document.getElementById('startBtn');
@@ -1320,6 +1340,7 @@ tablaBody.addEventListener('click', (e) => {
 
   actualizarEstadoBotones();
 </script>
+
 
 
 
